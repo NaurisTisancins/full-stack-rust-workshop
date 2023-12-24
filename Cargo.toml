@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "api/lib",
+    "api/shuttle",
+    "shared"
+]
+
+
+
