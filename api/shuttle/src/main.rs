@@ -1,5 +1,7 @@
 use actix_web::{get, web::ServiceConfig};
 use shuttle_actix_web::ShuttleActixWeb;
+use shuttle_runtime::CustomError;
+use sqlx::Executor;
 
 // This function is an Actix Web handler that responds with the string "Hello World!"
 //when accessed.
@@ -22,6 +24,10 @@ async fn actix_web(
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(hello_world);
     };
+
+    pool.execute(include_str!("../../db/schema.sql"))
+        .await
+        .map_err(CustomError::new)?;
 
     //Finally, the closure config is converted into a ShuttleActixWeb type using the
     //into() method, and the result is wrapped in an Ok
