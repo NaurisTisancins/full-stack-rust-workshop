@@ -16,10 +16,11 @@ async fn get_users() -> &'static str {
 // It is used to define the main function for the Shuttle runtime. Shuttle is a library
 //for building concurrent, distributed, and parallel programs in Rust.
 #[shuttle_runtime::main]
-async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+async fn actix_web(
+    #[shuttle_shared_db::Postgres()] pool: sqlx::PgPool,
+) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(hello_world);
-        cfg.service(get_users);
     };
 
     //Finally, the closure config is converted into a ShuttleActixWeb type using the

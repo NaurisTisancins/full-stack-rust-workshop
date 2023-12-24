@@ -5,5 +5,8 @@ members = [
     "shared"
 ]
 
+[workspace.dependencies]
+sqlx = { version = "0.7.3", default-features = false, features = [ "runtime-actix-native-tls", "macros", "postgres", "uuid", "chrono", "json" ] }
+
 
 
