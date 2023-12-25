@@ -5,14 +5,16 @@ use sqlx::Executor;
 
 // This function is an Actix Web handler that responds with the string "Hello World!"
 //when accessed.
-#[get("/")]
-async fn hello_world() -> &'static str {
-    "Hello World!"
-}
+#[get("/version")]
+async fn version(db: actix_web::web::Data<sqlx::PgPool>) -> String {
+    let result: Result<String, sqlx::Error> = sqlx::query_scalar("SELECT version()")
+        .fetch_one(db.as_ref())
+        .await;
 
-#[get("/users")]
-async fn get_users() -> &'static str {
-    "USERS!"
+    match result {
+        Ok(version) => format!("Hello World! {}", version),
+        Err(e) => format!("Error: {:?}", e),
+    }
 }
 
 // It is used to define the main function for the Shuttle runtime. Shuttle is a library
@@ -21,15 +23,11 @@ async fn get_users() -> &'static str {
 async fn actix_web(
     #[shuttle_shared_db::Postgres()] pool: sqlx::PgPool,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let pool = actix_web::web::Data::new(pool);
+
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.service(hello_world);
+        cfg.app_data(pool).service(version);
     };
 
-    pool.execute(include_str!("../../db/schema.sql"))
-        .await
-        .map_err(CustomError::new)?;
-
-    //Finally, the closure config is converted into a ShuttleActixWeb type using the
-    //into() method, and the result is wrapped in an Ok
     Ok(config.into())
 }
