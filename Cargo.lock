@@ -263,12 +263,18 @@ checksum = "59d2a3357dde987206219e78ecfbbb6e8dad06cbb65292758d3270e6254f7355"
 [[package]]
 name = "api-lib"
 version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "sqlx",
+ "tracing",
+]
 
 [[package]]
 name = "api-shuttle"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "api-lib",
  "shuttle-actix-web",
  "shuttle-runtime",
  "shuttle-shared-db",
