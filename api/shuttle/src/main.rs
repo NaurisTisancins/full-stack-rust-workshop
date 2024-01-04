@@ -1,4 +1,4 @@
-use actix_web::web::ServiceConfig;
+use actix_web::web::{self, ServiceConfig};
 
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::CustomError;

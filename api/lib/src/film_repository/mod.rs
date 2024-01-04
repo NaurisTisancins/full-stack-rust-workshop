@@ -1,3 +1,4 @@
+pub use postgres_film_repository::PostgresFilmRepository;
 use shared::models::{CreateFilm, Film};
 use uuid::Uuid;
 
@@ -12,3 +13,5 @@ pub trait FilmRepository: Send + Sync + 'static {
     async fn update_film(&self, id: &Film) -> FilmResult<Film>;
     async fn delete_film(&self, id: &Uuid) -> FilmResult<Uuid>;
 }
+
+mod postgres_film_repository;

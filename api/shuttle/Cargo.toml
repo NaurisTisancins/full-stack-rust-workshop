@@ -4,11 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = "4.3.1"
-shuttle-actix-web = "0.35.0"
-shuttle-runtime = "0.35.0"
-tokio = "1.26.0"
+# internal
+api-lib = { workspace = true }
+# shuttle
+shuttle-runtime = "0.35.2"
+shuttle-actix-web = "0.35.2"
+# db
+# shuttle-aws-rds = { version = "0.18.0", features = ["postgres"] }
 shuttle-shared-db = { version = "0.35.2", features = ["postgres"] }
-sqlx = { version = "0.7.3", default-features = false, features = [ "runtime-async-std-native-tls", "macros", "postgres", "uuid", "chrono", "json" ] }
-tracing = "0.1"
-api-lib = {path = "../lib"}
+sqlx = { workspace = true }
+# static files
+shuttle-static-folder = "0.28.0"
+# actix
+actix-web = { workspace = true }
+actix-files = { workspace = true }
+tokio = "1.28.2"

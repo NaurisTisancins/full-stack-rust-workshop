@@ -2,18 +2,24 @@
 name = "api-lib"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+publish = false
 
 [dependencies]
-sqlx = { version = "0.7.3", default-features = false, features = [ "runtime-async-std-native-tls", "macros", "postgres", "uuid", "chrono", "json" ] }
-actix-web = "4.3.1"
-tracing = "0.1"
-shared = { path = "../../shared" }
-serde = "1.0"
+shared = { path = "../../shared", features = ["backend"] }
+
+# db
+sqlx = { workspace = true }
+# actix
+actix-web = { workspace = true }
+# serde
+serde = { workspace = true }
 serde_json = "1.0"
-async-trait = "0.1"
-uuid = { version = "1.3", features = ["serde", "v4", "js"] }
+# utils
+uuid = { workspace = true }
+chrono = { workspace = true }
+async-trait = "0.1.68"
+tracing = { workspace = true }
 
 [dev-dependencies]
-actix-rt = "2.0.0"
+actix-rt = "2"
+mockall = "0.12.1"
