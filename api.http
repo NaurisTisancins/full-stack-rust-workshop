@@ -9,8 +9,8 @@ POST {{host}}/v1/films HTTP/1.1
 Content-Type: application/json
 
 {
-    "title": "Death in Venice",
-    "director": "Luchino Visconti",
+    "title": "Star Wars",
+    "director": "Some other guy",
     "year": 1971,
     "poster": "https://th.bing.com/th/id/R.0d441f68f2182fd7c129f4e79f6a66ef?rik=h0j7Ecvt7NBYrg&pid=ImgRaw&r=0"
 }
