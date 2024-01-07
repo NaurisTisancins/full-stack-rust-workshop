@@ -1,1 +1,4 @@
 name = "nauristisancins"
+assets = [
+    "static/*",
+]
