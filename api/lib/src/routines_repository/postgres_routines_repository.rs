@@ -19,7 +19,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
     async fn get_routines(&self) -> RoutineResult<Vec<Routine>> {
         sqlx::query_as::<_, Routine>(
             r#"
-      SELECT routine_id, name, description, training_plan_id, created_at, updated_at
+      SELECT routine_id, name, description, created_at, updated_at
       FROM routines
       "#,
         )
