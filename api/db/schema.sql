@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS TrainingDays (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-DROP TABLE IF EXISTS exercises CASCADE;
+DROP TABLE IF EXISTS Exercises CASCADE;
 -- Table for individual exercises
 CREATE TABLE IF NOT EXISTS Exercises (
     exercise_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
