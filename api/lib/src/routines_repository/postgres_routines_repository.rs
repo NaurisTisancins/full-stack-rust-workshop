@@ -1,5 +1,8 @@
+use std::ptr::null;
+
 use super::{RoutineResult, RoutinesRepository};
 use shared::models::{CreateRoutine, Routine};
+use uuid::Uuid;
 
 pub struct PostgresRoutinesRepository {
     pool: sqlx::PgPool,
@@ -44,7 +47,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
             r#"
       INSERT INTO routines (name, description)
       VALUES ($1, $2)
-      RETURNING id, name, description, created_at, updated_at
+      RETURNING routine_id, name, description, created_at, updated_at
       "#,
         )
         .bind(&create_routine.name)

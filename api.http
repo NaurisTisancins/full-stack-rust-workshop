@@ -10,8 +10,7 @@ Content-Type: application/json
 
 {
     "name": "Push Pull Legs",
-    "description": "Split where we have a separete deay for upper body push, pull and a day where only lower body is being trained",
-    "training_plan_id": null
+    "description": "Split where we have a separete deay for upper body push, pull and a day where only lower body is being trained"
 }
 
 # ### update routine
