@@ -1,10 +1,11 @@
-# @host = http://localhost:8000/api
-@host =  https://nauristisancins.shuttleapp.rs/api
+@host = http://localhost:8000/api
+# @host =  https://nauristisancins.shuttleapp.rs/api
 @routine_id = 6f05e5f2-133c-11ee-be9f-0ab7e0d8c876
 
 # ### health
 # GET {{host}}/health HTTP/1.1
 
+# ROUTINES
 ### create routine
 POST {{host}}/v1/routines HTTP/1.1
 Content-Type: application/json
@@ -29,4 +30,36 @@ Content-Type: application/json
 ### get all routines
 GET {{host}}/v1/routines HTTP/1.1
 
+# TRAININGDAYS
+### create training day
+POST {{host}}/v1/training_days HTTP/1.1
+Content-Type: application/json
+
+{
+    "day_name": "Legs",
+    "routine_id": "f3244d62-7650-454e-b096-84602dcf9315"
+}
+
+### get_training_days by routine_id
+GET {{host}}/v1/training_days/f3244d62-7650-454e-b096-84602dcf9315 HTTP/1.1
+Content-Type: application/json
+
+# EXERCISES
+@exercise_id = 8c071d16-971b-4f7b-ab66-0a1a0a0696b5
+@day_id = 60723cb0-f8c5-4cc1-a470-372feba4b797
+### create exercise
+POST {{host}}/v1/exercises HTTP/1.1
+Content-Type: application/json
+
+{
+    "exercise_name": "Deadlift",
+    "exercise_description": "Lower Body Movement"
+}
+
+### get_exercises
+GET {{host}}/v1/exercises HTTP/1.1
+Content-Type: application/json
+
+### add exercise to training day
+POST {{host}}/v1/exercises/{{exercise_id}}/{{day_id}} HTTP/1.1
 
