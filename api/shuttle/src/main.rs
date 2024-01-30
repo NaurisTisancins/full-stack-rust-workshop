@@ -19,6 +19,7 @@ async fn actix_web(
     // #[shuttle_static_folder::StaticFolder(folder = "static")] static_folder: PathBuf,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     // initialize the database if not already initialized
+
     pool.execute(include_str!("../../db/schema.sql"))
         .await
         .map_err(CustomError::new)?;

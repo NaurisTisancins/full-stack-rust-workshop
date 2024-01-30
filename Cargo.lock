@@ -298,6 +298,7 @@ dependencies = [
  "actix-web",
  "async-trait",
  "chrono",
+ "log",
  "mockall",
  "serde",
  "serde_json",

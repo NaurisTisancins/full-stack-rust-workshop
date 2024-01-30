@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS Routines (
 -- Table for training days, linking exercises to specific days
 CREATE TABLE IF NOT EXISTS TrainingDays (
     day_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    routine_id UUID REFERENCES Routines(routine_id),
+    routine_id UUID REFERENCES Routines(routine_id) ON DELETE CASCADE,
     day_name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS Exercises (
 
 -- DROP TABLE IF EXISTS ExerciseTrainingDayLink CASCADE;
 -- Junction table to represent the relationship between exercises and training days
-CREATE TABLE IF NOT EXISTS ExerciseTrainiDayLink (
+CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
     link_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     exercise_id UUID REFERENCES Exercises(exercise_id),
     day_id UUID REFERENCES TrainingDays(day_id),

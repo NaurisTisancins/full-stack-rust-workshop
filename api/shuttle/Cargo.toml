@@ -19,3 +19,4 @@ shuttle-static-folder = "0.28.0"
 actix-web = { workspace = true }
 actix-files = { workspace = true }
 tokio = "1.28.2"
+
