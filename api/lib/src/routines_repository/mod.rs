@@ -26,6 +26,10 @@ pub trait RoutinesRepository: Send + Sync + 'static {
 
     // training days
     async fn get_training_days(&self, routine_id: &Uuid) -> TrainingDayResult<Vec<TrainingDay>>;
+    async fn get_training_days_with_exercises(
+        &self,
+        day_id: &Uuid,
+    ) -> Result<Vec<TrainingDayWithExercises>, sqlx::Error>;
     async fn create_training_day(
         &self,
         create_training_day: &CreateTrainingDay,

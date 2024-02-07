@@ -49,11 +49,12 @@ Content-Type: application/json
 ### delete training day
 DELETE {{host}}/v1/training_days/ac1dd6fc-f565-4283-b19e-c5174e2bb05f HTTP/1.1
 
-
-
 ### get_training_days by routine_id
 GET {{host}}/v1/training_days/{{routine_id}} HTTP/1.1
 Content-Type: application/json
+
+### get_training_days_with_exercises by routine_id
+GET {{host}}/v1/training_days/with_exercises/05e81a8c-7e2d-4172-a6d9-c3d9f192ba91 HTTP/1.1
 
 # EXERCISES
 
@@ -61,23 +62,52 @@ Content-Type: application/json
 POST {{host}}/v1/exercises/bulk HTTP/1.1
 Content-Type: application/json
 
-[{
-    "exercise_name": "Incline Bench Press",
-    "exercise_description": "Horizontal Upper Body Push Movement"
-  },
-  {
-    "exercise_name": "Good Morning",
-    "exercise_description": "Lower Body Compound Movement"
-  },
-  {
-    "exercise_name": "Romanian Deadlift",
-    "exercise_description": "Full Body Pulling Movement"
-  },
-  {
-    "exercise_name": "Chest Supported Row",
-    "exercise_description": "Horizontal Upper Body Push Movement"
-  }
-  ]
+[
+    {
+        "exercise_name": "Bench Press",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Squat",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Deadlift",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Pull Up",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Dumbbell Row",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Dumbbell Press",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Dumbbell Curl",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Tricep Extension",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Leg Press",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Leg Curl",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    },
+    {
+        "exercise_name": "Leg Extension",
+        "exercise_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla euismod, nisl nec ultricies ultricies, nunc nisl aliquam nunc, nec aliquam nisl nisl nec nisl."
+    }
+ ]
 
 ### get_exercises
 GET {{host}}/v1/exercises HTTP/1.1
@@ -96,7 +126,7 @@ GET {{host}}/v1/exercises/{{day_id}} HTTP/1.1
 Content-Type: application/json
 
 ### delete exercise from training day
-DELETE {{host}}/v1/exercises/ac1dd6fc-f565-4283-b19e-c5174e2bb05f HTTP/1.1
+DELETE {{host}}/v1/exercises/38c63a3a-bba1-4f9b-86df-0049cf49f821 HTTP/1.1
 
 ### get link table 
 GET {{host}}/v1/debug/link_table HTTP/1.1

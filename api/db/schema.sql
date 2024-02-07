@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS Routines (
     name VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     is_active BOOLEAN DEFAULT FALSE,
+    disabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );
@@ -52,21 +53,31 @@ CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
+-- DROP TABLE IF EXISTS Sessions CASCADE;
+-- Table for individual sessions
+CREATE TABLE IF NOT EXISTS Sessions (
+    session_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    day_id UUID REFERENCES TrainingDays(day_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+DROP TABLE IF EXISTS SessionExercises CASCADE;
 
 
+-- DROP TABLE IF EXISTS SessionExercisePerformace CASCADE;
+-- Table for individual session exercise performance
+CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
+    performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    session_id UUID REFERENCES Sessions(session_id),
+    exercise_id UUID REFERENCES Exercises(exercise_id),
+    weight DECIMAL(5,2),
+    reps SMALLINT,
+    set SMALLINT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
 
-
-
-
--- DROP TABLE IF EXISTS TrainingPlanTrainingDayLink CASCADE;
--- Junction table to represent the relationship between training plans and training days
--- CREATE TABLE IF NOT EXISTS TrainingPlanTrainingDayLink (
---     link_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
---     training_plan_id UUID REFERENCES TrainingPlans(training_plan_id),
---     day_id UUID REFERENCES TrainingDays(day_id),
---     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
---     updated_at TIMESTAMP WITH TIME ZONE
--- );
 
 
 

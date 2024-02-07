@@ -27,6 +27,10 @@ pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
                 web::post().to(create_training_days::<R>),
             )
             .route(
+                "training_days/with_exercises/{routine_id}",
+                web::get().to(get_training_days_with_exercises::<R>),
+            )
+            .route(
                 "/training_days/{routine_id}", // post new training day
                 web::post().to(create_training_day::<R>),
             )
@@ -116,6 +120,17 @@ async fn get_training_days<R: RoutinesRepository>(
 ) -> HttpResponse {
     let routine_id = path.into_inner();
     match repo.get_training_days(&routine_id).await {
+        Ok(training_days) => HttpResponse::Ok().json(training_days),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn get_training_days_with_exercises<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let routine_id = path.into_inner();
+    match repo.get_training_days_with_exercises(&routine_id).await {
         Ok(training_days) => HttpResponse::Ok().json(training_days),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }

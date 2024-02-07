@@ -1,10 +1,13 @@
+use std::collections::HashMap;
+
 use super::{
     CustomError, ExerciseToTrainingDayResult, RoutineResult, RoutinesRepository,
     SelectedExercisesWithLinkIdResult, TrainingDayResult,
 };
 use shared::models::{
     CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
-    ExerciseWithLinkId, Routine, TrainingDay,
+    ExerciseWithLinkId, Routine, TrainingDay, TrainingDayWithExercises,
+    TrainingDayWithExercisesQuery,
 };
 
 use uuid::Uuid;
@@ -373,5 +376,74 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         .fetch_all(&self.pool)
         .await
         .map_err(|e| e.to_string())
+    }
+
+    async fn get_training_days_with_exercises(
+        &self,
+        routine_id: &Uuid,
+    ) -> Result<Vec<TrainingDayWithExercises>, sqlx::Error> {
+        let query = sqlx::query_as::<_, (TrainingDayWithExercisesQuery)>(
+            r#"
+        SELECT
+            td.day_id AS day_id,
+            td.routine_id AS routine_id,
+            td.day_name AS day_name,
+            td.created_at AS created_at,
+            td.updated_at AS updated_at,
+            e.exercise_id AS exercise_id,
+            e.exercise_name AS exercise_name,
+            e.exercise_description AS exercise_description,
+            etdl.link_id AS link_id
+        FROM
+            TrainingDays td
+        JOIN
+            ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+        JOIN
+            Exercises e ON etdl.exercise_id = e.exercise_id
+        WHERE
+            td.routine_id = $1
+        "#,
+        )
+        .bind(routine_id);
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        // Group exercises by training day
+        let mut training_days: HashMap<Uuid, TrainingDayWithExercises> = HashMap::new();
+
+        for row in rows {
+            let day_id = row.day_id;
+            let routine_id = row.routine_id;
+            let day_name = row.day_name;
+            let created_at = row.created_at;
+            let updated_at = row.updated_at;
+
+            let exercise = ExerciseWithLinkId {
+                exercise_id: row.exercise_id,
+                exercise_name: row.exercise_name,
+                exercise_description: row.exercise_description,
+                link_id: row.link_id,
+                created_at,
+                updated_at,
+            };
+
+            let training_day = training_days
+                .entry(day_id)
+                .or_insert(TrainingDayWithExercises {
+                    day_id,
+                    routine_id,
+                    day_name,
+                    exercises: vec![],
+                    created_at,
+                    updated_at,
+                });
+
+            training_day.exercises.push(exercise);
+        }
+
+        // Convert HashMap values to Vec
+        let result: Vec<TrainingDayWithExercises> = training_days.into_values().collect();
+
+        Ok(result)
     }
 }

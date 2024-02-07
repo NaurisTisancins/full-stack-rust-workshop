@@ -92,3 +92,17 @@ pub struct TrainingDayWithExercises {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
+
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct TrainingDayWithExercisesQuery {
+    pub day_id: uuid::Uuid,
+    pub routine_id: uuid::Uuid,
+    pub link_id: uuid::Uuid,
+    pub exercise_id: uuid::Uuid,
+    pub day_name: String,
+    pub exercise_name: String,
+    pub exercise_description: String,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+}
