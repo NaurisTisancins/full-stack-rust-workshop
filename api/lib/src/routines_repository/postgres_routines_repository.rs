@@ -382,27 +382,27 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         &self,
         routine_id: &Uuid,
     ) -> Result<Vec<TrainingDayWithExercises>, sqlx::Error> {
-        let query = sqlx::query_as::<_, (TrainingDayWithExercisesQuery)>(
+        let query = sqlx::query_as::<_, TrainingDayWithExercisesQuery>(
             r#"
-        SELECT
-            td.day_id AS day_id,
-            td.routine_id AS routine_id,
-            td.day_name AS day_name,
-            td.created_at AS created_at,
-            td.updated_at AS updated_at,
-            e.exercise_id AS exercise_id,
-            e.exercise_name AS exercise_name,
-            e.exercise_description AS exercise_description,
-            etdl.link_id AS link_id
-        FROM
-            TrainingDays td
-        JOIN
-            ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
-        JOIN
-            Exercises e ON etdl.exercise_id = e.exercise_id
-        WHERE
-            td.routine_id = $1
-        "#,
+SELECT
+    td.day_id AS day_id,
+    td.routine_id AS routine_id,
+    td.day_name AS day_name,
+    td.created_at AS created_at,
+    td.updated_at AS updated_at,
+    e.exercise_id AS exercise_id,
+    e.exercise_name AS exercise_name,
+    e.exercise_description AS exercise_description,
+    etdl.link_id AS link_id
+FROM
+    TrainingDays td
+LEFT JOIN
+    ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+LEFT JOIN
+    Exercises e ON etdl.exercise_id = e.exercise_id
+WHERE
+    td.routine_id = $1
+"#,
         )
         .bind(routine_id);
 
@@ -447,3 +447,45 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         Ok(result)
     }
 }
+
+// r#"
+// SELECT
+//     td.day_id AS day_id,
+//     td.routine_id AS routine_id,
+//     td.day_name AS day_name,
+//     td.created_at AS created_at,
+//     td.updated_at AS updated_at,
+//     e.exercise_id AS exercise_id,
+//     e.exercise_name AS exercise_name,
+//     e.exercise_description AS exercise_description,
+//     etdl.link_id AS link_id
+// FROM
+//     TrainingDays td
+// LEFT JOIN
+//     ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+// LEFT JOIN
+//     Exercises e ON etdl.exercise_id = e.exercise_id
+// WHERE
+//     td.routine_id = $1
+// "#
+
+// r#"
+//         SELECT
+//             td.day_id AS day_id,
+//             td.routine_id AS routine_id,
+//             td.day_name AS day_name,
+//             td.created_at AS created_at,
+//             td.updated_at AS updated_at,
+//             e.exercise_id AS exercise_id,
+//             e.exercise_name AS exercise_name,
+//             e.exercise_description AS exercise_description,
+//             etdl.link_id AS link_id
+//         FROM
+//             TrainingDays td
+//         JOIN
+//             ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+//         JOIN
+//             Exercises e ON etdl.exercise_id = e.exercise_id
+//         WHERE
+//             td.routine_id = $1
+//         "#,
