@@ -418,27 +418,48 @@ WHERE
             let created_at = row.created_at;
             let updated_at = row.updated_at;
 
-            let exercise = ExerciseWithLinkId {
-                exercise_id: row.exercise_id,
-                exercise_name: row.exercise_name,
-                exercise_description: row.exercise_description,
-                link_id: row.link_id,
-                created_at,
-                updated_at,
-            };
-
-            let training_day = training_days
-                .entry(day_id)
-                .or_insert(TrainingDayWithExercises {
-                    day_id,
-                    routine_id,
-                    day_name,
-                    exercises: vec![],
+            let exercise = match (
+                row.exercise_id,
+                row.exercise_name,
+                row.exercise_description,
+                row.link_id,
+            ) {
+                (
+                    Some(exercise_id),
+                    Some(exercise_name),
+                    Some(exercise_description),
+                    Some(link_id),
+                ) => Some(ExerciseWithLinkId {
+                    exercise_id,
+                    exercise_name,
+                    exercise_description,
+                    link_id,
                     created_at,
                     updated_at,
-                });
+                }),
+                _ => None,
+            };
 
-            training_day.exercises.push(exercise);
+            let training_day =
+                training_days
+                    .entry(day_id)
+                    .or_insert_with(|| TrainingDayWithExercises {
+                        day_id,
+                        routine_id,
+                        day_name,
+                        exercises: Some(Vec::new()), // Initialize exercises with an empty vector
+                        created_at,
+                        updated_at,
+                    });
+
+            if let Some(exercise) = exercise {
+                if let Some(exercises) = &mut training_day.exercises {
+                    exercises.push(exercise);
+                } else {
+                    // If exercises is None, create a new Vec and push the exercise
+                    training_day.exercises = Some(vec![exercise]);
+                }
+            }
         }
 
         // Convert HashMap values to Vec

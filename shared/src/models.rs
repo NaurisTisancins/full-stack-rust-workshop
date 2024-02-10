@@ -88,7 +88,7 @@ pub struct TrainingDayWithExercises {
     pub day_id: uuid::Uuid, // we will be using uuids as ids
     pub routine_id: uuid::Uuid,
     pub day_name: String,
-    pub exercises: Vec<ExerciseWithLinkId>,
+    pub exercises: Option<Vec<ExerciseWithLinkId>>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -98,11 +98,11 @@ pub struct TrainingDayWithExercises {
 pub struct TrainingDayWithExercisesQuery {
     pub day_id: uuid::Uuid,
     pub routine_id: uuid::Uuid,
-    pub link_id: uuid::Uuid,
-    pub exercise_id: uuid::Uuid,
+    pub link_id: Option<uuid::Uuid>,     // Make link_id optional
+    pub exercise_id: Option<uuid::Uuid>, // Make exercise_id optional
     pub day_name: String,
-    pub exercise_name: String,
-    pub exercise_description: String,
+    pub exercise_name: Option<String>, // Make exercise_name optional
+    pub exercise_description: Option<String>, // Make exercise_description optional
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }

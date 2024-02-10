@@ -1,6 +1,6 @@
-# @host = http://localhost:8000/api
-@host =  https://nauristisancins.shuttleapp.rs/api
-@routine_id = 51d1f42e-ac30-4d57-a136-13d23a4fae58
+@host = http://localhost:8000/api
+# @host =  https://nauristisancins.shuttleapp.rs/api
+@routine_id = 17d2d6fe-3f09-4159-86c1-3f2e7e5328ce
 @day_id = 8dce446e-150c-4ebe-bd51-97167c041e2d
 @exercise_id = 0149b7e0-04d0-42aa-bff0-0652327dcd9a
 
