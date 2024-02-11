@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --     updated_at timestamp with time zone
 -- );
 
-DROP TABLE IF EXISTS Routines CASCADE;
+-- DROP TABLE IF EXISTS Routines CASCADE;
 -- Table for routines
 CREATE TABLE IF NOT EXISTS Routines (
     routine_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS Routines (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-DROP TABLE IF EXISTS TrainingDays CASCADE;
+-- DROP TABLE IF EXISTS TrainingDays CASCADE;
 -- Table for training days, linking exercises to specific days
 CREATE TABLE IF NOT EXISTS TrainingDays (
     day_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS TrainingDays (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-DROP TABLE IF EXISTS Exercises CASCADE;
+-- DROP TABLE IF EXISTS Exercises CASCADE;
 -- Table for individual exercises
 CREATE TABLE IF NOT EXISTS Exercises (
     exercise_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS Exercises (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-DROP TABLE IF EXISTS ExerciseTrainingDayLink CASCADE;
+-- DROP TABLE IF EXISTS ExerciseTrainingDayLink CASCADE;
 -- Junction table to represent the relationship between exercises and training days
 CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
     link_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-DROP TABLE IF EXISTS Sessions CASCADE;
+-- DROP TABLE IF EXISTS Sessions CASCADE;
 -- Table for individual sessions
 CREATE TABLE IF NOT EXISTS Sessions (
     session_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS Sessions (
 -- DROP TABLE IF EXISTS SessionExercises CASCADE;
 
 
-DROP TABLE IF EXISTS SessionExercisePerformace CASCADE;
+-- DROP TABLE IF EXISTS SessionExercisePerformace CASCADE;
 -- Table for individual session exercise performance
 CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
     performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
