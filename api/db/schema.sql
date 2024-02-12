@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
 CREATE TABLE IF NOT EXISTS Sessions (
     session_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     day_id UUID REFERENCES TrainingDays(day_id),
+    in_progress BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );

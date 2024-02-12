@@ -58,7 +58,17 @@ pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
                 "exercises/{link_id}",
                 web::delete().to(delete_exercise_from_training_day::<R>),
             )
-            .route("/debug/link_table", web::get().to(get_link_table_data::<R>)),
+            .route("/debug/link_table", web::get().to(get_link_table_data::<R>))
+            .route("/session/{day_id}", web::post().to(create_session::<R>))
+            .route(
+                "/session/{day_id}/all",
+                web::get().to(get_sessions_by_day_id::<R>),
+            )
+            .route(
+                "/session/{day_id}",
+                web::get().to(get_sessions_with_exercises_by_day_id::<R>),
+            )
+            .route("/session/end/{session_id}", web::put().to(end_session::<R>)),
     );
 }
 // ROUTINES
@@ -259,6 +269,51 @@ async fn delete_exercise_from_training_day<R: RoutinesRepository>(
 async fn get_link_table_data<R: RoutinesRepository>(repo: web::Data<R>) -> HttpResponse {
     match repo.get_link_table_data().await {
         Ok(link_table_data) => HttpResponse::Ok().json(link_table_data),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+//SESSIONS
+async fn create_session<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let day_id = path.into_inner();
+    match repo.create_session(&day_id).await {
+        Ok(session) => HttpResponse::Ok().json(session),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn get_sessions_by_day_id<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let day_id = path.into_inner();
+    match repo.get_all_sessions_by_day_id(&day_id).await {
+        Ok(sessions) => HttpResponse::Ok().json(sessions),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn get_sessions_with_exercises_by_day_id<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let day_id = path.into_inner();
+    match repo.get_sessions_with_exercises(&day_id).await {
+        Ok(sessions_with_exercises) => HttpResponse::Ok().json(sessions_with_exercises),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error {:?}", e)),
+    }
+}
+
+async fn end_session<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let session_id = path.into_inner();
+    match repo.end_session(&session_id).await {
+        Ok(_) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }
 }

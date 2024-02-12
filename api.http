@@ -1,8 +1,8 @@
 @host = http://localhost:8000/api
 # @host =  https://nauristisancins.shuttleapp.rs/api
-@routine_id = 17d2d6fe-3f09-4159-86c1-3f2e7e5328ce
-@day_id = 8dce446e-150c-4ebe-bd51-97167c041e2d
-@exercise_id = 0149b7e0-04d0-42aa-bff0-0652327dcd9a
+@routine_id = 89f25d1f-a3e2-4751-a9e8-a173832364a2
+@day_id = 41be9411-759c-451e-9d66-85b544313ddb
+@exercise_id = d843ec27-bbeb-4620-a0ce-a768faec68ad
 
 
 # ### health
@@ -42,7 +42,7 @@ POST {{host}}/v1/training_days HTTP/1.1
 Content-Type: application/json
 
 [{
-    "day_name": "Legs",
+    "day_name": "Push",
     "routine_id": "{{routine_id}}"
 }]
 
@@ -57,7 +57,6 @@ Content-Type: application/json
 GET {{host}}/v1/training_days/with_exercises/{{routine_id}} HTTP/1.1
 
 # EXERCISES
-
 ### create exercise
 POST {{host}}/v1/exercises/bulk HTTP/1.1
 Content-Type: application/json
@@ -130,3 +129,18 @@ DELETE {{host}}/v1/exercises/38c63a3a-bba1-4f9b-86df-0049cf49f821 HTTP/1.1
 
 ### get link table 
 GET {{host}}/v1/debug/link_table HTTP/1.1
+
+
+# SESSIONS
+@session_id = 727bbd32-dab4-4e3c-971c-b5b7d23151cb
+### create session
+POST {{host}}/v1/session/{{day_id}} HTTP/1.1
+
+### get all sessions with exercises by day_id
+GET {{host}}/v1/session/{{day_id}} HTTP/1.1
+
+### get all sessions by day_id
+GET {{host}}/v1/session/{{day_id}}/all HTTP/1.1
+
+### end session
+PUT {{host}}/v1/session/end/{{session_id}} HTTP/1.1

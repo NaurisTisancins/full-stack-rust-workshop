@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 use super::{
-    CustomError, ExerciseToTrainingDayResult, RoutineResult, RoutinesRepository,
-    SelectedExercisesWithLinkIdResult, TrainingDayResult,
-};
-use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
-    ExerciseWithLinkId, Routine, TrainingDay, TrainingDayWithExercises,
-    TrainingDayWithExercisesQuery,
+    ExerciseToTrainingDayResult, RoutineResult, RoutinesRepository,
+    SelectedExercisesWithLinkIdResult, SessionError, SessionResult, TrainingDayResult,
 };
 
+use shared::models::{
+    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
+    ExerciseWithLinkId, Routine, Session, SessionWithExercises, SessionsWithExercisesQuery,
+    TrainingDay, TrainingDayWithExercises, TrainingDayWithExercisesQuery,
+};
 use uuid::Uuid;
 
 pub struct PostgresRoutinesRepository {
@@ -384,25 +384,25 @@ impl RoutinesRepository for PostgresRoutinesRepository {
     ) -> Result<Vec<TrainingDayWithExercises>, sqlx::Error> {
         let query = sqlx::query_as::<_, TrainingDayWithExercisesQuery>(
             r#"
-SELECT
-    td.day_id AS day_id,
-    td.routine_id AS routine_id,
-    td.day_name AS day_name,
-    td.created_at AS created_at,
-    td.updated_at AS updated_at,
-    e.exercise_id AS exercise_id,
-    e.exercise_name AS exercise_name,
-    e.exercise_description AS exercise_description,
-    etdl.link_id AS link_id
-FROM
-    TrainingDays td
-LEFT JOIN
-    ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
-LEFT JOIN
-    Exercises e ON etdl.exercise_id = e.exercise_id
-WHERE
-    td.routine_id = $1
-"#,
+            SELECT
+                td.day_id AS day_id,
+                td.routine_id AS routine_id,
+                td.day_name AS day_name,
+                td.created_at AS created_at,
+                td.updated_at AS updated_at,
+                e.exercise_id AS exercise_id,
+                e.exercise_name AS exercise_name,
+                e.exercise_description AS exercise_description,
+                etdl.link_id AS link_id
+            FROM
+                TrainingDays td
+            LEFT JOIN
+                ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+            LEFT JOIN
+                Exercises e ON etdl.exercise_id = e.exercise_id
+            WHERE
+                td.routine_id = $1
+            "#,
         )
         .bind(routine_id);
 
@@ -447,7 +447,7 @@ WHERE
                         day_id,
                         routine_id,
                         day_name,
-                        exercises: Some(Vec::new()), // Initialize exercises with an empty vector
+                        exercises: Some(Vec::new()),
                         created_at,
                         updated_at,
                     });
@@ -467,46 +467,193 @@ WHERE
 
         Ok(result)
     }
+
+    async fn is_previous_session_in_progress(&self, day_id: &Uuid) -> SessionResult<bool> {
+        let query = sqlx::query_as::<_, (bool,)>(
+            r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM Sessions
+            WHERE day_id = $1 AND in_progress = true
+        ) AS previous_session_in_progress
+        "#,
+        )
+        .bind(day_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string());
+
+        // Extract the boolean value from the query result tuple
+        let previous_session_in_progress = match query {
+            Ok((value,)) => value,
+            Err(_) => false,
+        };
+
+        Ok(previous_session_in_progress)
+    }
+
+    async fn create_session(&self, day_id: &Uuid) -> SessionResult<SessionWithExercises> {
+        if self.is_previous_session_in_progress(day_id).await? {
+            return Err(SessionError::PreviousSessionInProgress);
+        }
+
+        // Insert a new session into the database
+        let session_query = sqlx::query_as::<_, Session>(
+            r#"
+        INSERT INTO Sessions (day_id)
+        VALUES ($1)
+        RETURNING session_id, day_id, in_progress, created_at, updated_at
+        "#,
+        )
+        .bind(&day_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        // Fetch exercises associated with the newly created session
+        let exercises_query = sqlx::query_as::<_, ExerciseWithLinkId>(
+            r#"
+        SELECT
+            e.exercise_id,
+            etdl.link_id,
+            e.exercise_name,
+            e.exercise_description,
+            e.created_at,
+            e.updated_at
+        FROM
+            ExerciseTrainingDayLink etdl
+        LEFT JOIN
+            Exercises e ON etdl.exercise_id = e.exercise_id
+        WHERE
+            etdl.day_id = $1
+        "#,
+        )
+        .bind(&day_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        // Construct the SessionWithExercises struct
+        let session_with_exercises = SessionWithExercises {
+            session_id: session_query.session_id,
+            day_id: session_query.day_id,
+            in_progress: session_query.in_progress,
+            exercises: exercises_query,
+            created_at: session_query.created_at,
+            updated_at: session_query.updated_at,
+        };
+
+        Ok(session_with_exercises)
+    }
+
+    async fn get_all_sessions_by_day_id(&self, day_id: &Uuid) -> SessionResult<Vec<Session>> {
+        sqlx::query_as::<_, Session>(
+            r#"
+            SELECT * 
+            FROM Sessions
+        WHERE Sessions.day_id = $1
+            "#,
+        )
+        .bind(&day_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))
+    }
+
+    async fn get_sessions_with_exercises(
+        &self,
+        day_id: &Uuid,
+    ) -> SessionResult<Vec<SessionWithExercises>> {
+        let query = sqlx::query_as::<_, SessionsWithExercisesQuery>(
+            r#"
+        SELECT 
+            s.session_id,
+            s.day_id,
+            s.in_progress,
+            e.exercise_id,
+            e.exercise_name,
+            e.exercise_description,
+            etdl.link_id,
+            s.created_at,
+            s.updated_at
+        FROM 
+            Sessions s
+        LEFT JOIN 
+            TrainingDays td ON s.day_id = td.day_id
+        LEFT JOIN 
+            ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
+        LEFT JOIN 
+            Exercises e ON etdl.exercise_id = e.exercise_id
+        WHERE 
+            s.day_id = $1
+        "#,
+        )
+        .bind(&day_id);
+
+        let rows = match query.fetch_all(&self.pool).await {
+            Ok(rows) => rows,
+            Err(err) => return Err(SessionError::Error(err.to_string())),
+        };
+
+        let mut sessions_map: HashMap<Uuid, SessionWithExercises> = HashMap::new();
+
+        for row in rows {
+            let session_id = row.session_id;
+            let day_id = row.day_id;
+            let in_progress = row.in_progress;
+            let exercise_id = row.exercise_id;
+            let exercise_name = row.exercise_name;
+            let exercise_description = row.exercise_description;
+            let link_id = row.link_id;
+            let created_at = row.created_at;
+            let updated_at = row.updated_at;
+
+            let session = sessions_map
+                .entry(session_id)
+                .or_insert(SessionWithExercises {
+                    session_id,
+                    day_id,
+                    in_progress,
+                    exercises: Vec::new(),
+                    created_at,
+                    updated_at,
+                });
+
+            session.exercises.push(ExerciseWithLinkId {
+                exercise_id: exercise_id.unwrap_or_default(),
+                link_id,
+                exercise_name,
+                exercise_description,
+                created_at,
+                updated_at,
+            });
+        }
+
+        let sessions: Vec<SessionWithExercises> = sessions_map.into_values().collect();
+
+        for session in &sessions {
+            if session.exercises.is_empty() {
+                return Err(SessionError::NoExercisesFound);
+            }
+        }
+
+        Ok(sessions)
+    }
+
+    async fn end_session(&self, session_id: &Uuid) -> SessionResult<()> {
+        // Update the `in_progress` field of the session to false in the database
+        sqlx::query(
+            r#"
+        UPDATE Sessions
+        SET in_progress = FALSE
+        WHERE session_id = $1
+        "#,
+        )
+        .bind(session_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        Ok(())
+    }
 }
-
-// r#"
-// SELECT
-//     td.day_id AS day_id,
-//     td.routine_id AS routine_id,
-//     td.day_name AS day_name,
-//     td.created_at AS created_at,
-//     td.updated_at AS updated_at,
-//     e.exercise_id AS exercise_id,
-//     e.exercise_name AS exercise_name,
-//     e.exercise_description AS exercise_description,
-//     etdl.link_id AS link_id
-// FROM
-//     TrainingDays td
-// LEFT JOIN
-//     ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
-// LEFT JOIN
-//     Exercises e ON etdl.exercise_id = e.exercise_id
-// WHERE
-//     td.routine_id = $1
-// "#
-
-// r#"
-//         SELECT
-//             td.day_id AS day_id,
-//             td.routine_id AS routine_id,
-//             td.day_name AS day_name,
-//             td.created_at AS created_at,
-//             td.updated_at AS updated_at,
-//             e.exercise_id AS exercise_id,
-//             e.exercise_name AS exercise_name,
-//             e.exercise_description AS exercise_description,
-//             etdl.link_id AS link_id
-//         FROM
-//             TrainingDays td
-//         JOIN
-//             ExerciseTrainingDayLink etdl ON td.day_id = etdl.day_id
-//         JOIN
-//             Exercises e ON etdl.exercise_id = e.exercise_id
-//         WHERE
-//             td.routine_id = $1
-//         "#,
