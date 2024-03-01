@@ -1,8 +1,8 @@
 pub use postgres_routines_repository::PostgresRoutinesRepository;
 use shared::models::{
     CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
-    ExerciseWithLinkId, Routine, Session, SessionWithExercises, TrainingDay,
-    TrainingDayWithExercises,
+    ExerciseWithLinkId, Routine, Session, SessionWithExercisePerformance, SessionWithExercises,
+    SetPerformance, SetPerformancePayload, TrainingDay, TrainingDayWithExercises,
 };
 
 use uuid::Uuid;
@@ -87,14 +87,30 @@ pub trait RoutinesRepository: Send + Sync + 'static {
     async fn get_link_table_data(&self) -> ExerciseToTrainingDayResult<Vec<ExerciseToTrainingDay>>;
 
     async fn is_previous_session_in_progress(&self, day_id: &Uuid) -> SessionResult<bool>;
-    async fn create_session(&self, day_id: &Uuid) -> SessionResult<SessionWithExercises>;
+    async fn create_session(&self, day_id: &Uuid) -> SessionResult<SessionWithExercisePerformance>;
     async fn get_all_sessions_by_day_id(&self, day_id: &Uuid) -> SessionResult<Vec<Session>>;
     async fn get_sessions_with_exercises(
         &self,
         day_id: &Uuid,
     ) -> SessionResult<Vec<SessionWithExercises>>;
+    async fn get_session_in_progress(
+        &self,
+        routine_id: &Uuid,
+    ) -> SessionResult<Option<SessionWithExercisePerformance>>;
+    async fn get_all_sessions_by_routine_id(
+        &self,
+        routine_id: &Uuid,
+    ) -> SessionResult<Vec<Session>>;
+    async fn end_session(&self, session_id: &Uuid) -> SessionResult<Uuid>;
 
-    async fn end_session(&self, session_id: &Uuid) -> SessionResult<()>;
+    async fn add_set_performance_to_session(
+        &self,
+        session_id: &Uuid,
+        exercise_id: &Uuid,
+        set_performance: &SetPerformancePayload,
+    ) -> SessionResult<SetPerformance>;
+
+    async fn clear_data(&self) -> Result<(), sqlx::Error>;
 }
 
 mod postgres_routines_repository;

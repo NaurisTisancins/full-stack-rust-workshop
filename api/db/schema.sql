@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS ExerciseTrainingDayLink (
 CREATE TABLE IF NOT EXISTS Sessions (
     session_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     day_id UUID REFERENCES TrainingDays(day_id),
+    day_name VARCHAR(50) NOT NULL,
     in_progress BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
@@ -66,19 +67,20 @@ CREATE TABLE IF NOT EXISTS Sessions (
 -- DROP TABLE IF EXISTS SessionExercises CASCADE;
 
 
--- DROP TABLE IF EXISTS SessionExercisePerformace CASCADE;
+DROP TABLE IF EXISTS SessionExercisePerformance CASCADE;
 -- Table for individual session exercise performance
 CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
     performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     session_id UUID REFERENCES Sessions(session_id),
     exercise_id UUID REFERENCES Exercises(exercise_id),
-    weight DECIMAL(5,2),
+    weight FLOAT4,
     reps SMALLINT,
-    set SMALLINT,
+    set_number SMALLINT,
+    rir SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT unique_set_number UNIQUE (session_id, exercise_id, set_number)
 );
-
 
 
 

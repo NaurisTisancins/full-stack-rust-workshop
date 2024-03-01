@@ -1,10 +1,11 @@
 use actix_web::{
-    web::{self, ServiceConfig},
-    HttpResponse,
+    web::{self, get, ServiceConfig},
+    HttpRequest, HttpResponse,
 };
 
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, Routine, SearchQuery, TrainingDay,
+    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, Routine, SearchQuery,
+    SessionPerformance, SetPerformance, SetPerformancePayload, TrainingDay,
 };
 use uuid::Uuid;
 
@@ -59,6 +60,7 @@ pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
                 web::delete().to(delete_exercise_from_training_day::<R>),
             )
             .route("/debug/link_table", web::get().to(get_link_table_data::<R>))
+            .route("/debug/clear_data", web::get().to(clear_data::<R>))
             .route("/session/{day_id}", web::post().to(create_session::<R>))
             .route(
                 "/session/{day_id}/all",
@@ -67,6 +69,18 @@ pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
             .route(
                 "/session/{day_id}",
                 web::get().to(get_sessions_with_exercises_by_day_id::<R>),
+            )
+            .route(
+                "/session/in_progress/{routine_id}",
+                web::get().to(get_session_in_progress::<R>),
+            )
+            .route(
+                "/session/all/{routine_id}",
+                get().to(get_all_sessions_by_routine_id::<R>),
+            )
+            .route(
+                "/session/{session_id}/{exercise_id}",
+                web::post().to(add_set_performance_to_session::<R>),
             )
             .route("/session/end/{session_id}", web::put().to(end_session::<R>)),
     );
@@ -280,7 +294,7 @@ async fn create_session<R: RoutinesRepository>(
 ) -> HttpResponse {
     let day_id = path.into_inner();
     match repo.create_session(&day_id).await {
-        Ok(session) => HttpResponse::Ok().json(session),
+        Ok(session_with_exercises) => HttpResponse::Ok().json(session_with_exercises),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }
 }
@@ -307,12 +321,56 @@ async fn get_sessions_with_exercises_by_day_id<R: RoutinesRepository>(
     }
 }
 
+async fn get_session_in_progress<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let routine_id = path.into_inner();
+    match repo.get_session_in_progress(&routine_id).await {
+        Ok(session_with_exercises) => HttpResponse::Ok().json(session_with_exercises),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn get_all_sessions_by_routine_id<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let routine_id = path.into_inner();
+    match repo.get_all_sessions_by_routine_id(&routine_id).await {
+        Ok(sessions) => HttpResponse::Ok().json(sessions),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
 async fn end_session<R: RoutinesRepository>(
     path: web::Path<Uuid>,
     repo: web::Data<R>,
 ) -> HttpResponse {
     let session_id = path.into_inner();
     match repo.end_session(&session_id).await {
+        Ok(session_id) => HttpResponse::Ok().json(session_id),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn add_set_performance_to_session<R: RoutinesRepository>(
+    path: web::Path<(Uuid, Uuid)>,
+    set_performance: web::Json<SetPerformancePayload>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let (session_id, exercise_id) = path.into_inner();
+    match repo
+        .add_set_performance_to_session(&session_id, &exercise_id, &set_performance)
+        .await
+    {
+        Ok(session_id) => HttpResponse::Ok().json(session_id),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn clear_data<R: RoutinesRepository>(repo: web::Data<R>) -> HttpResponse {
+    match repo.clear_data().await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }

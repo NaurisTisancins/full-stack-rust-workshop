@@ -21,6 +21,7 @@ async-trait = "0.1.68"
 tracing = { workspace = true }
 log = "0.4"
 
+
 [dev-dependencies]
 actix-rt = "2"
 mockall = "0.12.1"

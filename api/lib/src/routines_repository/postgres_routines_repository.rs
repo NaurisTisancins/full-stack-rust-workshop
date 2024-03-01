@@ -7,7 +7,8 @@ use super::{
 
 use shared::models::{
     CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
-    ExerciseWithLinkId, Routine, Session, SessionWithExercises, SessionsWithExercisesQuery,
+    ExerciseWithLinkId, Routine, Session, SessionPerformance, SessionWithExercisePerformance,
+    SessionWithExercises, SessionsWithExercisesQuery, SetPerformance, SetPerformancePayload,
     TrainingDay, TrainingDayWithExercises, TrainingDayWithExercisesQuery,
 };
 use uuid::Uuid;
@@ -492,20 +493,133 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         Ok(previous_session_in_progress)
     }
 
-    async fn create_session(&self, day_id: &Uuid) -> SessionResult<SessionWithExercises> {
+    async fn get_session_in_progress(
+        &self,
+        routine_id: &Uuid,
+    ) -> SessionResult<Option<SessionWithExercisePerformance>> {
+        let active_session_query = sqlx::query_as::<_, Session>(
+            r#"
+        SELECT s.*, td.day_name
+        FROM Sessions s
+        LEFT JOIN TrainingDays td ON s.day_id = td.day_id
+        WHERE td.routine_id = $1 AND s.in_progress = true
+        LIMIT 1
+        "#,
+        )
+        .bind(routine_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        if let Some(active_session) = active_session_query {
+            let exercises_query = sqlx::query_as::<_, ExerciseWithLinkId>(
+                r#"
+            SELECT
+                e.exercise_id,
+                etdl.link_id,
+                e.exercise_name,
+                e.exercise_description,
+                e.created_at,
+                e.updated_at
+            FROM
+                ExerciseTrainingDayLink etdl
+            LEFT JOIN
+                Exercises e ON etdl.exercise_id = e.exercise_id
+            WHERE
+                etdl.day_id = $1
+            "#,
+            )
+            .bind(active_session.day_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| SessionError::Error(e.to_string()))?;
+
+            // Initialize a vector to hold SessionPerformance objects
+            let mut session_performance_vec = Vec::new();
+
+            // Iterate over fetched exercises
+            for exercise in exercises_query.iter() {
+                // Query SessionExercisePerformance table to get set data for this exercise within the active session
+                let sets_query = sqlx::query_as::<_, SetPerformance>(
+                    r#"
+                SELECT
+                    performance_id,
+                    set_number,
+                    weight,
+                    reps,
+                    rir,
+                    created_at,
+                    updated_at
+                FROM
+                    SessionExercisePerformance
+                WHERE
+                    session_id = $1 AND
+                    exercise_id = $2
+                ORDER BY
+                    set_number
+                "#,
+                )
+                .bind(active_session.session_id)
+                .bind(exercise.exercise_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| SessionError::Error(e.to_string()))?;
+
+                // Create SessionPerformance object for this exercise, populating it with fetched set data
+                let session_performance = SessionPerformance {
+                    session_id: active_session.session_id,
+                    exercise_id: exercise.exercise_id,
+                    exercise_name: exercise.exercise_name.clone(),
+                    sets: sets_query,
+                    created_at: None, // Modify as needed
+                    updated_at: None, // Modify as needed
+                };
+
+                // Add the SessionPerformance object to the vector
+                session_performance_vec.push(session_performance);
+            }
+
+            // Construct the SessionWithExercisePerformance object
+            let session_with_exercises = SessionWithExercisePerformance {
+                session_id: active_session.session_id,
+                day_id: active_session.day_id,
+                day_name: active_session.day_name,
+                in_progress: active_session.in_progress,
+                exercises: exercises_query,
+                performance: session_performance_vec,
+                created_at: active_session.created_at,
+                updated_at: active_session.updated_at,
+            };
+
+            Ok(Some(session_with_exercises))
+        } else {
+            Ok(None) // No active session found
+        }
+    }
+
+    async fn create_session(&self, day_id: &Uuid) -> SessionResult<SessionWithExercisePerformance> {
         if self.is_previous_session_in_progress(day_id).await? {
             return Err(SessionError::PreviousSessionInProgress);
         }
 
+        // Fetch the day_name associated with the provided day_id
+        let day_name_query =
+            sqlx::query_scalar::<_, String>("SELECT day_name FROM TrainingDays WHERE day_id = $1")
+                .bind(day_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| SessionError::Error(e.to_string()))?;
+
         // Insert a new session into the database
         let session_query = sqlx::query_as::<_, Session>(
             r#"
-        INSERT INTO Sessions (day_id)
-        VALUES ($1)
-        RETURNING session_id, day_id, in_progress, created_at, updated_at
+        INSERT INTO Sessions (day_id, day_name)
+        VALUES ($1, $2)
+        RETURNING session_id, day_id, day_name, in_progress, created_at, updated_at
         "#,
         )
-        .bind(&day_id)
+        .bind(day_id)
+        .bind(&day_name_query)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| SessionError::Error(e.to_string()))?;
@@ -528,17 +642,32 @@ impl RoutinesRepository for PostgresRoutinesRepository {
             etdl.day_id = $1
         "#,
         )
-        .bind(&day_id)
+        .bind(day_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| SessionError::Error(e.to_string()))?;
 
-        // Construct the SessionWithExercises struct
-        let session_with_exercises = SessionWithExercises {
+        // Initialize a vector to hold SessionPerformance objects
+        let mut session_performance_vec = Vec::new();
+
+        // Iterate over fetched exercises and initialize SessionPerformance for each
+        for exercise in exercises_query.iter() {
+            let session_performance = SessionPerformance::new(
+                session_query.session_id,
+                exercise.exercise_id,
+                exercise.exercise_name.clone(),
+            );
+            session_performance_vec.push(session_performance);
+        }
+
+        // Construct the SessionWithExercisePerformance struct
+        let session_with_exercises = SessionWithExercisePerformance {
             session_id: session_query.session_id,
             day_id: session_query.day_id,
+            day_name: session_query.day_name,
             in_progress: session_query.in_progress,
             exercises: exercises_query,
+            performance: session_performance_vec, // Set the performance vector with initialized SessionPerformance objects
             created_at: session_query.created_at,
             updated_at: session_query.updated_at,
         };
@@ -560,6 +689,24 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         .map_err(|e| SessionError::Error(e.to_string()))
     }
 
+    async fn get_all_sessions_by_routine_id(
+        &self,
+        routine_id: &Uuid,
+    ) -> SessionResult<Vec<Session>> {
+        sqlx::query_as::<_, Session>(
+            r#"
+            SELECT s.session_id, s.day_id, s.day_name, s.in_progress, s.created_at, s.updated_at
+            FROM Sessions s
+            LEFT JOIN TrainingDays td ON s.day_id = td.day_id
+            WHERE td.routine_id = $1
+            "#,
+        )
+        .bind(&routine_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))
+    }
+
     async fn get_sessions_with_exercises(
         &self,
         day_id: &Uuid,
@@ -569,6 +716,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         SELECT 
             s.session_id,
             s.day_id,
+            s.day_name,
             s.in_progress,
             e.exercise_id,
             e.exercise_name,
@@ -600,6 +748,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         for row in rows {
             let session_id = row.session_id;
             let day_id = row.day_id;
+            let day_name = row.day_name;
             let in_progress = row.in_progress;
             let exercise_id = row.exercise_id;
             let exercise_name = row.exercise_name;
@@ -613,6 +762,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
                 .or_insert(SessionWithExercises {
                     session_id,
                     day_id,
+                    day_name,
                     in_progress,
                     exercises: Vec::new(),
                     created_at,
@@ -640,19 +790,86 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         Ok(sessions)
     }
 
-    async fn end_session(&self, session_id: &Uuid) -> SessionResult<()> {
+    async fn end_session(&self, session_id: &Uuid) -> SessionResult<Uuid> {
         // Update the `in_progress` field of the session to false in the database
-        sqlx::query(
+        let endSessionQuery = sqlx::query(
             r#"
         UPDATE Sessions
         SET in_progress = FALSE
         WHERE session_id = $1
+        RETURNING session_id
         "#,
         )
         .bind(session_id)
         .execute(&self.pool)
         .await
         .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        match endSessionQuery.rows_affected() {
+            1 => Ok(*session_id),
+            _ => Err(SessionError::Error("No session found".to_string())),
+        }
+    }
+
+    async fn add_set_performance_to_session(
+        &self,
+        session_id: &Uuid,
+        exercise_id: &Uuid,
+        set_performance: &SetPerformancePayload,
+    ) -> SessionResult<SetPerformance> {
+        let query = sqlx::query_as::<_, SetPerformance>(
+            r#"
+        INSERT INTO SessionExercisePerformance (session_id, exercise_id, set_number, weight, reps, rir)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING performance_id, set_number, weight, reps, rir, created_at, updated_at
+        "#,
+        )
+        .bind(&session_id)
+        .bind(&exercise_id)
+        .bind(&set_performance.set_number)
+        .bind(&set_performance.weight)
+        .bind(&set_performance.reps)
+        .bind(&set_performance.rir)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        Ok(query)
+    }
+
+    async fn clear_data(&self) -> Result<(), sqlx::Error> {
+        let mut transaction = self.pool.begin().await?;
+
+        // Delete all rows from the ExerciseTrainingDayLink table
+        sqlx::query("DELETE FROM ExerciseTrainingDayLink")
+            .execute(transaction.as_mut())
+            .await?;
+
+        // Delete all rows from the Sessions table
+        sqlx::query("DELETE FROM Sessions")
+            .execute(transaction.as_mut())
+            .await?;
+
+        // Delete all rows from the TrainingDays table
+        sqlx::query("DELETE FROM TrainingDays")
+            .execute(transaction.as_mut())
+            .await?;
+
+        // Delete all rows from the Exercises table
+        sqlx::query("DELETE FROM Exercises")
+            .execute(transaction.as_mut())
+            .await?;
+
+        // Delete all rows from the Routines table
+        sqlx::query("DELETE FROM Routines")
+            .execute(transaction.as_mut())
+            .await?;
+
+        sqlx::query("DELETE FROM SessionExercisePerformance")
+            .execute(transaction.as_mut())
+            .await?;
+
+        transaction.commit().await?;
 
         Ok(())
     }

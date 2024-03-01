@@ -1,8 +1,8 @@
 @host = http://localhost:8000/api
 # @host =  https://nauristisancins.shuttleapp.rs/api
-@routine_id = 89f25d1f-a3e2-4751-a9e8-a173832364a2
-@day_id = 41be9411-759c-451e-9d66-85b544313ddb
-@exercise_id = d843ec27-bbeb-4620-a0ce-a768faec68ad
+@routine_id = 6b25e4a5-5deb-4594-9e37-041d16c4f6a0
+@day_id = 2c5b3876-557e-4c9f-9467-ef780628cdd9
+@exercise_id = e1c4a911-4a7b-4c53-abc5-d37783ca463d
 
 
 # ### health
@@ -42,7 +42,7 @@ POST {{host}}/v1/training_days HTTP/1.1
 Content-Type: application/json
 
 [{
-    "day_name": "Push",
+    "day_name": "Pull",
     "routine_id": "{{routine_id}}"
 }]
 
@@ -57,7 +57,7 @@ Content-Type: application/json
 GET {{host}}/v1/training_days/with_exercises/{{routine_id}} HTTP/1.1
 
 # EXERCISES
-### create exercise
+### create exercises
 POST {{host}}/v1/exercises/bulk HTTP/1.1
 Content-Type: application/json
 
@@ -132,7 +132,7 @@ GET {{host}}/v1/debug/link_table HTTP/1.1
 
 
 # SESSIONS
-@session_id = 727bbd32-dab4-4e3c-971c-b5b7d23151cb
+@session_id = 17563248-4888-4d8d-9b83-b63ff57a0e80
 ### create session
 POST {{host}}/v1/session/{{day_id}} HTTP/1.1
 
@@ -143,4 +143,23 @@ GET {{host}}/v1/session/{{day_id}} HTTP/1.1
 GET {{host}}/v1/session/{{day_id}}/all HTTP/1.1
 
 ### end session
-PUT {{host}}/v1/session/end/{{session_id}} HTTP/1.1
+PUT {{host}}/v1/session/end/f14f4b35-1b0b-49a6-98cb-1901c9641e32 HTTP/1.1
+
+### get sessions in progress
+GET {{host}}/v1/session/in_progress/{{routine_id}} HTTP/1.1
+
+### get all session by routine_id
+GET {{host}}/v1/session/all/{{routine_id}} HTTP/1.1
+
+### add set performance to session
+POST {{host}}/v1/session/{{session_id}}/{{exercise_id}} HTTP/1.1
+Content-Type: application/json
+
+{
+    "weight": 100,
+    "reps": 10,
+    "set_number": 1 
+}
+
+### clear all data
+GET {{host}}/v1/debug/clear_all HTTP/1.1
