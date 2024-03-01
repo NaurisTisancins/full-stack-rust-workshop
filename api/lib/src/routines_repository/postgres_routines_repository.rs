@@ -818,9 +818,15 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         set_performance: &SetPerformancePayload,
     ) -> SessionResult<SetPerformance> {
         let query = sqlx::query_as::<_, SetPerformance>(
-            r#"
+           r#"
         INSERT INTO SessionExercisePerformance (session_id, exercise_id, set_number, weight, reps, rir)
         VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (session_id, exercise_id, set_number) -- Conflict resolution
+        DO UPDATE SET
+            weight = EXCLUDED.weight,
+            reps = EXCLUDED.reps,
+            rir = EXCLUDED.rir,
+            updated_at = CURRENT_TIMESTAMP
         RETURNING performance_id, set_number, weight, reps, rir, created_at, updated_at
         "#,
         )
