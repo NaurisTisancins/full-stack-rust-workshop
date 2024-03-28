@@ -67,8 +67,34 @@ CREATE TABLE IF NOT EXISTS Sessions (
 -- DROP TABLE IF EXISTS SessionExercises CASCADE;
 
 
-DROP TABLE IF EXISTS SessionExercisePerformance CASCADE;
+-- DROP TABLE IF EXISTS SessionExercisePerformance CASCADE;
 -- Table for individual session exercise performance
+-- CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
+--     performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+--     session_id UUID REFERENCES Sessions(session_id),
+--     exercise_id UUID REFERENCES Exercises(exercise_id),
+--     weight FLOAT4,
+--     reps SMALLINT,
+--     set_number SMALLINT,
+--     rir SMALLINT,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP WITH TIME ZONE,
+--     CONSTRAINT unique_set_number UNIQUE (session_id, exercise_id, set_number)
+-- );
+
+CREATE OR REPLACE FUNCTION update_set_numbers()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE SessionExercisePerformance
+    SET set_number = set_number - 1
+    WHERE session_id = OLD.session_id
+    AND exercise_id = OLD.exercise_id
+    AND set_number > OLD.set_number;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
     performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     session_id UUID REFERENCES Sessions(session_id),
@@ -81,6 +107,15 @@ CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
     updated_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT unique_set_number UNIQUE (session_id, exercise_id, set_number)
 );
+
+DROP TRIGGER IF EXISTS update_set_numbers_trigger ON SessionExercisePerformance;
+
+-- Create trigger
+CREATE TRIGGER update_set_numbers_trigger
+BEFORE DELETE ON SessionExercisePerformance
+FOR EACH ROW
+EXECUTE FUNCTION update_set_numbers();
+
 
 
 

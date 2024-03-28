@@ -792,7 +792,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
 
     async fn end_session(&self, session_id: &Uuid) -> SessionResult<Uuid> {
         // Update the `in_progress` field of the session to false in the database
-        let endSessionQuery = sqlx::query(
+        let end_session_query = sqlx::query(
             r#"
         UPDATE Sessions
         SET in_progress = FALSE
@@ -805,7 +805,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         .await
         .map_err(|e| SessionError::Error(e.to_string()))?;
 
-        match endSessionQuery.rows_affected() {
+        match end_session_query.rows_affected() {
             1 => Ok(*session_id),
             _ => Err(SessionError::Error("No session found".to_string())),
         }
@@ -836,6 +836,25 @@ impl RoutinesRepository for PostgresRoutinesRepository {
         .bind(&set_performance.weight)
         .bind(&set_performance.reps)
         .bind(&set_performance.rir)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| SessionError::Error(e.to_string()))?;
+
+        Ok(query)
+    }
+
+    async fn remove_set_performance_from_session(
+        &self,
+        performance_id: &Uuid,
+    ) -> SessionResult<Uuid> {
+        let query = sqlx::query_scalar::<_, Uuid>(
+            r#"
+        DELETE FROM SessionExercisePerformance
+        WHERE performance_id = $1
+        RETURNING performance_id
+        "#,
+        )
+        .bind(&performance_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| SessionError::Error(e.to_string()))?;

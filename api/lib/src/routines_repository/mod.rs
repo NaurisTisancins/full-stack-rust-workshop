@@ -110,6 +110,11 @@ pub trait RoutinesRepository: Send + Sync + 'static {
         set_performance: &SetPerformancePayload,
     ) -> SessionResult<SetPerformance>;
 
+    async fn remove_set_performance_from_session(
+        &self,
+        performance_id: &Uuid,
+    ) -> SessionResult<Uuid>;
+
     async fn clear_data(&self) -> Result<(), sqlx::Error>;
 }
 

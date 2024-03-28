@@ -1,11 +1,10 @@
 use actix_web::{
     web::{self, get, ServiceConfig},
-    HttpRequest, HttpResponse,
+    HttpResponse,
 };
 
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, Routine, SearchQuery,
-    SessionPerformance, SetPerformance, SetPerformancePayload, TrainingDay,
+    CreateExercise, CreateRoutine, CreateTrainingDay, Routine, SearchQuery, SetPerformancePayload,
 };
 use uuid::Uuid;
 
@@ -81,6 +80,10 @@ pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
             .route(
                 "/session/{session_id}/{exercise_id}",
                 web::post().to(add_set_performance_to_session::<R>),
+            )
+            .route(
+                "/session/{performance_id}",
+                web::delete().to(remove_set_performance_from_session::<R>),
             )
             .route("/session/end/{session_id}", web::put().to(end_session::<R>)),
     );
@@ -362,6 +365,20 @@ async fn add_set_performance_to_session<R: RoutinesRepository>(
     let (session_id, exercise_id) = path.into_inner();
     match repo
         .add_set_performance_to_session(&session_id, &exercise_id, &set_performance)
+        .await
+    {
+        Ok(session_id) => HttpResponse::Ok().json(session_id),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
+    }
+}
+
+async fn remove_set_performance_from_session<R: RoutinesRepository>(
+    path: web::Path<Uuid>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let performance_id = path.into_inner();
+    match repo
+        .remove_set_performance_from_session(&performance_id)
         .await
     {
         Ok(session_id) => HttpResponse::Ok().json(session_id),
