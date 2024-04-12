@@ -28,16 +28,9 @@ async fn actix_web(
     let routines_repository = actix_web::web::Data::new(routines_repository);
 
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.service(
-            web::scope("/api")
-                .app_data(routines_repository)
-                .configure(api_lib::health::service)
-                .configure(
-                    api_lib::routines::service::<
-                        api_lib::routines_repository::PostgresRoutinesRepository,
-                    >,
-                ),
-        );
+        cfg.service(web::scope("/api").app_data(routines_repository).configure(
+            api_lib::routines::service::<api_lib::routines_repository::PostgresRoutinesRepository>,
+        ));
     };
 
     Ok(config.into())

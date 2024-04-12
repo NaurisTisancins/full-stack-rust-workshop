@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 // use sqlx::{Decode, Postgres};
 use uuid::Uuid;
