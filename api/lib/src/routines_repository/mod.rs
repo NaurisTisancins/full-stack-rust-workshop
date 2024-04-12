@@ -1,8 +1,8 @@
 pub use postgres_routines_repository::PostgresRoutinesRepository;
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
+    CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Exercise, ExerciseToTrainingDay,
     ExerciseWithLinkId, Routine, Session, SessionWithExercisePerformance, SessionWithExercises,
-    SetPerformance, SetPerformancePayload, TrainingDay, TrainingDayWithExercises,
+    SetPerformance, SetPerformancePayload, TrainingDay, TrainingDayWithExercises, User,
 };
 
 use uuid::Uuid;
@@ -22,6 +22,7 @@ pub enum SessionError {
     NoExercisesFound,
     Error(String),
 }
+
 impl From<String> for SessionError {
     fn from(msg: String) -> Self {
         SessionError::Error(msg)
@@ -39,6 +40,8 @@ pub type SessionResult<T> = Result<T, SessionError>;
 
 #[async_trait::async_trait]
 pub trait RoutinesRepository: Send + Sync + 'static {
+    //users
+    async fn create_user(&self, create_user: &CreateUser) -> RoutineResult<User>;
     // routines
     async fn get_routines(&self) -> RoutineResult<Vec<Routine>>;
     async fn get_active_routines(&self) -> RoutineResult<Vec<Routine>>;

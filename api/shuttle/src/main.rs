@@ -1,25 +1,16 @@
-use actix_files::NamedFile;
-use actix_web::{
-    get,
-    web::{self, ServiceConfig},
-    Responder,
-};
+use actix_web::web::{self, ServiceConfig};
+use dotenv::dotenv;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::CustomError;
 use sqlx::Executor;
 
-#[get("/")]
-async fn index() -> impl Responder {
-    NamedFile::open_async("../static/index.html").await
-}
-
 #[shuttle_runtime::main]
 async fn actix_web(
     #[shuttle_shared_db::Postgres()] pool: sqlx::PgPool,
-    // #[shuttle_static_folder::StaticFolder(folder = "static")] static_folder: PathBuf,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
-    // initialize the database if not already initialized
+    dotenv().ok();
 
+    // initialize the database if not already initialized
     pool.execute(include_str!("../../db/schema.sql"))
         .await
         .map_err(CustomError::new)?;

@@ -6,10 +6,10 @@ use super::{
 };
 
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Exercise, ExerciseToTrainingDay,
+    CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Exercise, ExerciseToTrainingDay,
     ExerciseWithLinkId, Routine, Session, SessionPerformance, SessionWithExercisePerformance,
     SessionWithExercises, SessionsWithExercisesQuery, SetPerformance, SetPerformancePayload,
-    TrainingDay, TrainingDayWithExercises, TrainingDayWithExercisesQuery,
+    TrainingDay, TrainingDayWithExercises, TrainingDayWithExercisesQuery, User,
 };
 use uuid::Uuid;
 
@@ -25,6 +25,24 @@ impl PostgresRoutinesRepository {
 
 #[async_trait::async_trait]
 impl RoutinesRepository for PostgresRoutinesRepository {
+    // users
+    async fn create_user(&self, create_user: &CreateUser) -> RoutineResult<User> {
+        sqlx::query_as::<_, User>(
+            r#"
+            INSERT INTO users (  username, email,password)
+            VALUES ($1, $2, $3)
+            RETURNING   username,email, password
+            "#,
+        )
+        .bind(&create_user.username)
+        .bind(&create_user.email)
+        .bind(&create_user.password)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    //routines
     async fn get_routines(&self) -> RoutineResult<Vec<Routine>> {
         sqlx::query_as::<_, Routine>(
             r#"

@@ -1,5 +1,14 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+DROP TABLE IF EXISTS Users CASCADE;
+CREATE TABLE IF NOT EXISTS Users (
+    user_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
 -- DROP TABLE IF EXISTS Routines CASCADE;
 -- Table for routines
 CREATE TABLE IF NOT EXISTS Routines (
@@ -52,24 +61,6 @@ CREATE TABLE IF NOT EXISTS Sessions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );
-
--- DROP TABLE IF EXISTS SessionExercises CASCADE;
-
-
--- DROP TABLE IF EXISTS SessionExercisePerformance CASCADE;
--- Table for individual session exercise performance
--- CREATE TABLE IF NOT EXISTS SessionExercisePerformance (
---     performance_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
---     session_id UUID REFERENCES Sessions(session_id),
---     exercise_id UUID REFERENCES Exercises(exercise_id),
---     weight FLOAT4,
---     reps SMALLINT,
---     set_number SMALLINT,
---     rir SMALLINT,
---     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
---     updated_at TIMESTAMP WITH TIME ZONE,
---     CONSTRAINT unique_set_number UNIQUE (session_id, exercise_id, set_number)
--- );
 
 CREATE OR REPLACE FUNCTION update_set_numbers()
 RETURNS TRIGGER AS $$

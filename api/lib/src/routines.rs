@@ -1,10 +1,11 @@
 use actix_web::{
-    web::{self, get, ServiceConfig},
+    web::{self, delete, get, post, put, scope, Data, Json, Path, Query, ServiceConfig},
     HttpResponse,
 };
 
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, Routine, SearchQuery, SetPerformancePayload,
+    CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Routine, SearchQuery,
+    SetPerformancePayload,
 };
 use uuid::Uuid;
 
@@ -12,91 +13,104 @@ use crate::routines_repository::RoutinesRepository;
 
 pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
     cfg.service(
-        web::scope("/v1")
+        scope("/v1")
+            .service(scope("/users").route("/create", post().to(create_user::<R>)))
+            .service(
+                scope("/routines")
+                    .route("", get().to(get_all_routines::<R>))
+                    .route("/active", get().to(get_active_routine::<R>))
+                    .route("", post().to(create_routine::<R>))
+                    .route("", put().to(update_routine::<R>))
+                    .route("/{routine_id}", delete().to(delete_routine::<R>)),
+            )
+            .service(
+                scope("/training_days")
+                    .route(
+                        "", // post new training days as an array
+                        post().to(create_training_days::<R>),
+                    )
+                    .route(
+                        "/with_exercises/{routine_id}",
+                        get().to(get_training_days_with_exercises::<R>),
+                    )
+                    .route(
+                        "/{routine_id}", // post new training day
+                        post().to(create_training_day::<R>),
+                    )
+                    .route(
+                        "/{day_id}", // DELETE training day
+                        delete().to(delete_training_day::<R>),
+                    )
+                    .route("/{routine_id}", get().to(get_training_days::<R>)),
+            )
+            .service(
+                scope("/exercises")
+                    .route("", post().to(create_exercise::<R>))
+                    .route("/bulk", post().to(create_exercises::<R>))
+                    .route("", get().to(get_exercises::<R>))
+                    .route("/search", get().to(search_exercises::<R>))
+                    .route(
+                        "/{exercise_id}/{day_id}",
+                        post().to(add_exercise_to_training_day::<R>),
+                    )
+                    .route("/{day_id}", get().to(get_exercises_for_training_day::<R>))
+                    .route(
+                        "/{link_id}",
+                        delete().to(delete_exercise_from_training_day::<R>),
+                    ),
+            )
+            .service(
+                scope("/session")
+                    .route("/{day_id}", post().to(create_session::<R>))
+                    .route("/{day_id}/all", get().to(get_sessions_by_day_id::<R>))
+                    .route(
+                        "/{day_id}",
+                        get().to(get_sessions_with_exercises_by_day_id::<R>),
+                    )
+                    .route(
+                        "/in_progress/{routine_id}",
+                        get().to(get_session_in_progress::<R>),
+                    )
+                    .route(
+                        "/all/{routine_id}",
+                        get().to(get_all_sessions_by_routine_id::<R>),
+                    )
+                    .route(
+                        "/{session_id}/{exercise_id}",
+                        post().to(add_set_performance_to_session::<R>),
+                    )
+                    .route(
+                        "/{performance_id}",
+                        delete().to(remove_set_performance_from_session::<R>),
+                    )
+                    .route("/end/{session_id}", put().to(end_session::<R>)),
+            )
             // get all routines
-            .route("/routines", web::get().to(get_all_routines::<R>))
-            .route("/routines/active", web::get().to(get_active_routine::<R>))
-            .route("/routines", web::post().to(create_routine::<R>))
-            .route("/routines", web::put().to(update_routine::<R>))
-            .route(
-                "/routines/{routine_id}",
-                web::delete().to(delete_routine::<R>),
-            )
-            .route(
-                "/training_days", // post new training days as an array
-                web::post().to(create_training_days::<R>),
-            )
-            .route(
-                "training_days/with_exercises/{routine_id}",
-                web::get().to(get_training_days_with_exercises::<R>),
-            )
-            .route(
-                "/training_days/{routine_id}", // post new training day
-                web::post().to(create_training_day::<R>),
-            )
-            .route(
-                "/training_days/{day_id}", // DELETE training day
-                web::delete().to(delete_training_day::<R>),
-            )
-            .route(
-                "/training_days/{routine_id}",
-                web::get().to(get_training_days::<R>),
-            )
-            .route("/exercises", web::post().to(create_exercise::<R>))
-            .route("/exercises/bulk", web::post().to(create_exercises::<R>))
-            .route("/exercises", web::get().to(get_exercises::<R>))
-            .route("/exercises/search", web::get().to(search_exercises::<R>))
-            .route(
-                "/exercises/{exercise_id}/{day_id}",
-                web::post().to(add_exercise_to_training_day::<R>),
-            )
-            .route(
-                "/exercises/{day_id}",
-                web::get().to(get_exercises_for_training_day::<R>),
-            )
-            .route(
-                "exercises/{link_id}",
-                web::delete().to(delete_exercise_from_training_day::<R>),
-            )
-            .route("/debug/link_table", web::get().to(get_link_table_data::<R>))
-            .route("/debug/clear_data", web::get().to(clear_data::<R>))
-            .route("/session/{day_id}", web::post().to(create_session::<R>))
-            .route(
-                "/session/{day_id}/all",
-                web::get().to(get_sessions_by_day_id::<R>),
-            )
-            .route(
-                "/session/{day_id}",
-                web::get().to(get_sessions_with_exercises_by_day_id::<R>),
-            )
-            .route(
-                "/session/in_progress/{routine_id}",
-                web::get().to(get_session_in_progress::<R>),
-            )
-            .route(
-                "/session/all/{routine_id}",
-                get().to(get_all_sessions_by_routine_id::<R>),
-            )
-            .route(
-                "/session/{session_id}/{exercise_id}",
-                web::post().to(add_set_performance_to_session::<R>),
-            )
-            .route(
-                "/session/{performance_id}",
-                web::delete().to(remove_set_performance_from_session::<R>),
-            )
-            .route("/session/end/{session_id}", web::put().to(end_session::<R>)),
+            .route("/debug/link_table", get().to(get_link_table_data::<R>))
+            .route("/debug/clear_data", get().to(clear_data::<R>)),
     );
 }
+
+// USERS
+async fn create_user<R: RoutinesRepository>(
+    create_user: Json<CreateUser>,
+    repo: Data<R>,
+) -> HttpResponse {
+    match repo.create_user(&create_user).await {
+        Ok(user) => HttpResponse::Ok().json(user),
+        Err(e) => HttpResponse::InternalServerError().body(e),
+    }
+}
+
 // ROUTINES
-async fn get_all_routines<R: RoutinesRepository>(repo: web::Data<R>) -> HttpResponse {
+async fn get_all_routines<R: RoutinesRepository>(repo: Data<R>) -> HttpResponse {
     match repo.get_routines().await {
         Ok(routines) => HttpResponse::Ok().json(routines),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }
 }
 
-async fn get_active_routine<R: RoutinesRepository>(repo: web::Data<R>) -> HttpResponse {
+async fn get_active_routine<R: RoutinesRepository>(repo: Data<R>) -> HttpResponse {
     match repo.get_active_routines().await {
         Ok(routine_id) => HttpResponse::Ok().json(routine_id),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -104,8 +118,8 @@ async fn get_active_routine<R: RoutinesRepository>(repo: web::Data<R>) -> HttpRe
 }
 
 async fn create_routine<R: RoutinesRepository>(
-    create_routine: web::Json<CreateRoutine>,
-    repo: web::Data<R>,
+    create_routine: Json<CreateRoutine>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.create_routine(&create_routine).await {
         Ok(routine) => HttpResponse::Ok().json(routine),
@@ -116,8 +130,8 @@ async fn create_routine<R: RoutinesRepository>(
 }
 
 async fn update_routine<R: RoutinesRepository>(
-    routine: web::Json<Routine>,
-    repo: web::Data<R>,
+    routine: Json<Routine>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.update_routine(&routine).await {
         Ok(routine) => HttpResponse::Ok().json(routine),
@@ -128,8 +142,8 @@ async fn update_routine<R: RoutinesRepository>(
 }
 
 async fn delete_routine<R: RoutinesRepository>(
-    routine_id: web::Path<Uuid>,
-    repo: web::Data<R>,
+    routine_id: Path<Uuid>,
+    repo: Data<R>,
 ) -> HttpResponse {
     let routine_id = routine_id.into_inner();
     match repo.delete_routine(&routine_id).await {
@@ -141,10 +155,7 @@ async fn delete_routine<R: RoutinesRepository>(
 }
 
 // TRAINING DAYS
-async fn get_training_days<R: RoutinesRepository>(
-    path: web::Path<Uuid>,
-    repo: web::Data<R>,
-) -> HttpResponse {
+async fn get_training_days<R: RoutinesRepository>(path: Path<Uuid>, repo: Data<R>) -> HttpResponse {
     let routine_id = path.into_inner();
     match repo.get_training_days(&routine_id).await {
         Ok(training_days) => HttpResponse::Ok().json(training_days),
@@ -153,8 +164,8 @@ async fn get_training_days<R: RoutinesRepository>(
 }
 
 async fn get_training_days_with_exercises<R: RoutinesRepository>(
-    path: web::Path<Uuid>,
-    repo: web::Data<R>,
+    path: Path<Uuid>,
+    repo: Data<R>,
 ) -> HttpResponse {
     let routine_id = path.into_inner();
     match repo.get_training_days_with_exercises(&routine_id).await {
@@ -164,8 +175,8 @@ async fn get_training_days_with_exercises<R: RoutinesRepository>(
 }
 
 async fn create_training_day<R: RoutinesRepository>(
-    create_training_day: web::Json<CreateTrainingDay>,
-    repo: web::Data<R>,
+    create_training_day: Json<CreateTrainingDay>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.create_training_day(&create_training_day).await {
         Ok(day) => HttpResponse::Ok().json(day),
@@ -176,8 +187,8 @@ async fn create_training_day<R: RoutinesRepository>(
 }
 
 async fn delete_training_day<R: RoutinesRepository>(
-    path: web::Path<Uuid>,
-    repo: web::Data<R>,
+    path: Path<Uuid>,
+    repo: Data<R>,
 ) -> HttpResponse {
     let day_id = path.into_inner();
     match repo.delete_training_day(&day_id).await {
@@ -189,8 +200,8 @@ async fn delete_training_day<R: RoutinesRepository>(
 }
 
 async fn create_training_days<R: RoutinesRepository>(
-    create_training_days: web::Json<Vec<CreateTrainingDay>>,
-    repo: web::Data<R>,
+    create_training_days: Json<Vec<CreateTrainingDay>>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.create_training_days(&create_training_days).await {
         Ok(days) => HttpResponse::Ok().json(days),
@@ -201,7 +212,7 @@ async fn create_training_days<R: RoutinesRepository>(
 }
 
 // EXERCISES
-async fn get_exercises<R: RoutinesRepository>(repo: web::Data<R>) -> HttpResponse {
+async fn get_exercises<R: RoutinesRepository>(repo: Data<R>) -> HttpResponse {
     match repo.get_exercises().await {
         Ok(exercises) => HttpResponse::Ok().json(exercises),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -209,8 +220,8 @@ async fn get_exercises<R: RoutinesRepository>(repo: web::Data<R>) -> HttpRespons
 }
 
 async fn search_exercises<R: RoutinesRepository>(
-    query: web::Query<SearchQuery>,
-    repo: web::Data<R>,
+    query: Query<SearchQuery>,
+    repo: Data<R>,
 ) -> HttpResponse {
     let name: &String = &query.name;
     match repo.search_exercises(&name).await {
@@ -220,8 +231,8 @@ async fn search_exercises<R: RoutinesRepository>(
 }
 
 async fn create_exercise<R: RoutinesRepository>(
-    create_exercise: web::Json<CreateExercise>,
-    repo: web::Data<R>,
+    create_exercise: Json<CreateExercise>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.create_exercise(&create_exercise).await {
         Ok(exercise) => HttpResponse::Ok().json(exercise),
@@ -232,8 +243,8 @@ async fn create_exercise<R: RoutinesRepository>(
 }
 
 async fn create_exercises<R: RoutinesRepository>(
-    create_exercises: web::Json<Vec<CreateExercise>>,
-    repo: web::Data<R>,
+    create_exercises: Json<Vec<CreateExercise>>,
+    repo: Data<R>,
 ) -> HttpResponse {
     match repo.create_exercises(&create_exercises).await {
         Ok(exercises) => HttpResponse::Ok().json(exercises),
@@ -244,8 +255,8 @@ async fn create_exercises<R: RoutinesRepository>(
 }
 
 async fn add_exercise_to_training_day<R: RoutinesRepository>(
-    path: web::Path<(Uuid, Uuid)>,
-    repo: web::Data<R>,
+    path: Path<(Uuid, Uuid)>,
+    repo: Data<R>,
 ) -> HttpResponse {
     let (exercise_id, day_id) = path.into_inner();
     match repo
@@ -260,7 +271,7 @@ async fn add_exercise_to_training_day<R: RoutinesRepository>(
 }
 
 async fn get_exercises_for_training_day<R: RoutinesRepository>(
-    path: web::Path<Uuid>,
+    path: Path<Uuid>,
     repo: web::Data<R>,
 ) -> HttpResponse {
     let day_id = path.into_inner();
