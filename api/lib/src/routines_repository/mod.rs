@@ -42,6 +42,7 @@ pub type SessionResult<T> = Result<T, SessionError>;
 pub trait RoutinesRepository: Send + Sync + 'static {
     //users
     async fn create_user(&self, create_user: &CreateUser) -> RoutineResult<User>;
+    async fn get_users(&self) -> RoutineResult<Vec<User>>;
     // routines
     async fn get_routines(&self) -> RoutineResult<Vec<Routine>>;
     async fn get_active_routines(&self) -> RoutineResult<Vec<Routine>>;

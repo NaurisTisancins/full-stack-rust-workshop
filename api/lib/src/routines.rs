@@ -1,8 +1,11 @@
 use actix_web::{
+    http::StatusCode,
+    middleware::{Logger, NormalizePath, TrailingSlash},
     web::{self, delete, get, post, put, scope, Data, Json, Path, Query, ServiceConfig},
     HttpResponse,
 };
 
+use env_logger;
 use shared::models::{
     CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Routine, SearchQuery,
     SetPerformancePayload,
@@ -12,9 +15,16 @@ use uuid::Uuid;
 use crate::routines_repository::RoutinesRepository;
 
 pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
+    env_logger::init();
     cfg.service(
         scope("/v1")
-            .service(scope("/users").route("/create", post().to(create_user::<R>)))
+            // .wrap(Logger::default())
+            // .wrap(NormalizePath::new(TrailingSlash::Always))
+            .service(
+                scope("/users")
+                    .route("/all", get().to(get_users::<R>))
+                    .route("/create", post().to(create_user::<R>)),
+            )
             .service(
                 scope("/routines")
                     .route("", get().to(get_all_routines::<R>))
@@ -96,9 +106,21 @@ async fn create_user<R: RoutinesRepository>(
     create_user: Json<CreateUser>,
     repo: Data<R>,
 ) -> HttpResponse {
-    match repo.create_user(&create_user).await {
-        Ok(user) => HttpResponse::Ok().json(user),
-        Err(e) => HttpResponse::InternalServerError().body(e),
+    HttpResponse::Ok().json(create_user)
+
+    // println!("create_user: {:?}", create_user);
+    // match repo.create_user(&create_user).await {
+    //     Ok(user) => HttpResponse::Ok().json(user),
+    //     Err(e) => {
+    //         HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e))
+    //     }
+    // }
+}
+
+async fn get_users<R: RoutinesRepository>(repo: Data<R>) -> HttpResponse {
+    match repo.get_users().await {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     }
 }
 
