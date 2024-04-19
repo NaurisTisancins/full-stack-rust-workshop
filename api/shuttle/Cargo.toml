@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 # internal
 api-lib = { workspace = true }
+shared = { workspace = true}
 # shuttle
 shuttle-runtime = "0.36.0"
 shuttle-actix-web = "0.36.0"
@@ -21,4 +22,11 @@ actix-files = { workspace = true }
 tokio = "1.28.2"
 
 dotenv = "0.15.0"
+serde = {workspace = true}
 
+# DEPENDENCIES SPECIFIC TO AUTH
+actix-web-httpauth = { workspace = true }
+argonautica = { workspace = true }
+hmac = { workspace = true }
+jwt = { workspace = true }
+sha2 = { workspace = true }

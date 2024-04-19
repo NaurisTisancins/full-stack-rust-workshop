@@ -1,8 +1,27 @@
-use actix_web::web::{self, ServiceConfig};
+use actix_web::{
+    dev::ServiceRequest,
+    error::Error,
+    web::{self, ServiceConfig},
+    HttpMessage,
+};
 use dotenv::dotenv;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::CustomError;
 use sqlx::Executor;
+
+use actix_web_httpauth::{
+    extractors::{
+        bearer::{self, BearerAuth},
+        AuthenticationError,
+    },
+    middleware::HttpAuthentication,
+};
+use hmac::{Hmac, Mac};
+
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+
+use shared::models::TokenClaims;
 
 #[shuttle_runtime::main]
 async fn actix_web(

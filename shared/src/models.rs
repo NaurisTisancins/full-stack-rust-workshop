@@ -6,23 +6,36 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TokenClaims {
-    id: i32,
+    pub token_id: uuid::Uuid,
 }
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct CreateUser {
     pub username: String,
-    pub email: String,
     pub password: String,
 }
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct UserNoPassword {
+    user_id: uuid::Uuid,
+    username: String,
+}
+
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct AuthUser {
+    user_id: uuid::Uuid,
+    username: String,
+    password: String,
+}
+
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct User {
-    pub id: i32,
+    pub user_id: uuid::Uuid,
     pub username: String,
-    pub email: String,
     pub password: String,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,

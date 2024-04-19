@@ -20,8 +20,13 @@ chrono = { workspace = true }
 async-trait = "0.1.68"
 tracing = { workspace = true }
 log = "0.4"
-env_logger = "0.11.3"
 
+# DEPENDENCIES SPECIFIC TO AUTH
+actix-web-httpauth = { workspace = true }
+argonautica = { workspace = true }
+hmac = { workspace = true }
+jwt = { workspace = true }
+sha2 = { workspace = true }
 
 
 [dev-dependencies]

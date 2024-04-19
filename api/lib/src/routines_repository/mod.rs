@@ -43,6 +43,7 @@ pub trait RoutinesRepository: Send + Sync + 'static {
     //users
     async fn create_user(&self, create_user: &CreateUser) -> RoutineResult<User>;
     async fn get_users(&self) -> RoutineResult<Vec<User>>;
+    async fn get_user(&self, username: &str) -> RoutineResult<User>;
     // routines
     async fn get_routines(&self) -> RoutineResult<Vec<Routine>>;
     async fn get_active_routines(&self) -> RoutineResult<Vec<Routine>>;

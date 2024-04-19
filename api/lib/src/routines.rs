@@ -1,104 +1,191 @@
 use actix_web::{
-    http::StatusCode,
-    middleware::{Logger, NormalizePath, TrailingSlash},
+    dev::ServiceRequest,
+    error::Error,
     web::{self, delete, get, post, put, scope, Data, Json, Path, Query, ServiceConfig},
-    HttpResponse,
+    HttpMessage, HttpResponse,
 };
 
-use env_logger;
+use actix_web_httpauth::{
+    extractors::{
+        self,
+        basic::BasicAuth,
+        bearer::{self, BearerAuth},
+        AuthenticationError,
+    },
+    middleware::HttpAuthentication,
+};
+use argonautica::{Hasher, Verifier};
+use chrono::NaiveDateTime;
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use jwt::VerifyWithKey;
+use sha2::Sha256;
+use shared::models::TokenClaims;
+
 use shared::models::{
-    CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Routine, SearchQuery,
-    SetPerformancePayload,
+    AuthUser, CreateExercise, CreateRoutine, CreateTrainingDay, CreateUser, Routine, SearchQuery,
+    SetPerformancePayload, UserNoPassword,
 };
 use uuid::Uuid;
 
 use crate::routines_repository::RoutinesRepository;
 
+async fn validator(
+    req: ServiceRequest,
+    credentials: BearerAuth,
+) -> Result<ServiceRequest, (Error, ServiceRequest)> {
+    let jwt_secret: String = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set!");
+    let key: Hmac<Sha256> = Hmac::new_from_slice(jwt_secret.as_bytes()).unwrap();
+    let token_string = credentials.token();
+
+    let claims: Result<TokenClaims, &str> = token_string
+        .verify_with_key(&key)
+        .map_err(|_| "Invalid token");
+
+    match claims {
+        Ok(value) => {
+            req.extensions_mut().insert(value);
+            Ok(req)
+        }
+        Err(_) => {
+            let config = req
+                .app_data::<bearer::Config>()
+                .cloned()
+                .unwrap_or_default()
+                .scope("");
+
+            Err((AuthenticationError::from(config).into(), req))
+        }
+    }
+}
+
 pub fn service<R: RoutinesRepository>(cfg: &mut ServiceConfig) {
-    env_logger::init();
+    let bearer_middleware = HttpAuthentication::bearer(validator);
     cfg.service(
         scope("/v1")
-            // .wrap(Logger::default())
-            // .wrap(NormalizePath::new(TrailingSlash::Always))
             .service(
                 scope("/users")
+                    .route("/auth", get().to(basic_auth::<R>))
                     .route("/all", get().to(get_users::<R>))
                     .route("/create", post().to(create_user::<R>)),
             )
             .service(
-                scope("/routines")
-                    .route("", get().to(get_all_routines::<R>))
-                    .route("/active", get().to(get_active_routine::<R>))
-                    .route("", post().to(create_routine::<R>))
-                    .route("", put().to(update_routine::<R>))
-                    .route("/{routine_id}", delete().to(delete_routine::<R>)),
-            )
-            .service(
-                scope("/training_days")
-                    .route(
-                        "", // post new training days as an array
-                        post().to(create_training_days::<R>),
+                scope("")
+                    .wrap(bearer_middleware)
+                    .service(
+                        scope("/routines")
+                            .route("", get().to(get_all_routines::<R>))
+                            .route("/active", get().to(get_active_routine::<R>))
+                            .route("", post().to(create_routine::<R>))
+                            .route("", put().to(update_routine::<R>))
+                            .route("/{routine_id}", delete().to(delete_routine::<R>)),
                     )
-                    .route(
-                        "/with_exercises/{routine_id}",
-                        get().to(get_training_days_with_exercises::<R>),
+                    .service(
+                        scope("/training_days")
+                            .route(
+                                "", // post new training days as an array
+                                post().to(create_training_days::<R>),
+                            )
+                            .route(
+                                "/with_exercises/{routine_id}",
+                                get().to(get_training_days_with_exercises::<R>),
+                            )
+                            .route(
+                                "/{routine_id}", // post new training day
+                                post().to(create_training_day::<R>),
+                            )
+                            .route(
+                                "/{day_id}", // DELETE training day
+                                delete().to(delete_training_day::<R>),
+                            )
+                            .route("/{routine_id}", get().to(get_training_days::<R>)),
                     )
-                    .route(
-                        "/{routine_id}", // post new training day
-                        post().to(create_training_day::<R>),
+                    .service(
+                        scope("/exercises")
+                            .route("", post().to(create_exercise::<R>))
+                            .route("/bulk", post().to(create_exercises::<R>))
+                            .route("", get().to(get_exercises::<R>))
+                            .route("/search", get().to(search_exercises::<R>))
+                            .route(
+                                "/{exercise_id}/{day_id}",
+                                post().to(add_exercise_to_training_day::<R>),
+                            )
+                            .route("/{day_id}", get().to(get_exercises_for_training_day::<R>))
+                            .route(
+                                "/{link_id}",
+                                delete().to(delete_exercise_from_training_day::<R>),
+                            ),
                     )
-                    .route(
-                        "/{day_id}", // DELETE training day
-                        delete().to(delete_training_day::<R>),
+                    .service(
+                        scope("/session")
+                            .route("/{day_id}", post().to(create_session::<R>))
+                            .route("/{day_id}/all", get().to(get_sessions_by_day_id::<R>))
+                            .route(
+                                "/{day_id}",
+                                get().to(get_sessions_with_exercises_by_day_id::<R>),
+                            )
+                            .route(
+                                "/in_progress/{routine_id}",
+                                get().to(get_session_in_progress::<R>),
+                            )
+                            .route(
+                                "/all/{routine_id}",
+                                get().to(get_all_sessions_by_routine_id::<R>),
+                            )
+                            .route(
+                                "/{session_id}/{exercise_id}",
+                                post().to(add_set_performance_to_session::<R>),
+                            )
+                            .route(
+                                "/{performance_id}",
+                                delete().to(remove_set_performance_from_session::<R>),
+                            )
+                            .route("/end/{session_id}", put().to(end_session::<R>)),
                     )
-                    .route("/{routine_id}", get().to(get_training_days::<R>)),
-            )
-            .service(
-                scope("/exercises")
-                    .route("", post().to(create_exercise::<R>))
-                    .route("/bulk", post().to(create_exercises::<R>))
-                    .route("", get().to(get_exercises::<R>))
-                    .route("/search", get().to(search_exercises::<R>))
-                    .route(
-                        "/{exercise_id}/{day_id}",
-                        post().to(add_exercise_to_training_day::<R>),
-                    )
-                    .route("/{day_id}", get().to(get_exercises_for_training_day::<R>))
-                    .route(
-                        "/{link_id}",
-                        delete().to(delete_exercise_from_training_day::<R>),
-                    ),
-            )
-            .service(
-                scope("/session")
-                    .route("/{day_id}", post().to(create_session::<R>))
-                    .route("/{day_id}/all", get().to(get_sessions_by_day_id::<R>))
-                    .route(
-                        "/{day_id}",
-                        get().to(get_sessions_with_exercises_by_day_id::<R>),
-                    )
-                    .route(
-                        "/in_progress/{routine_id}",
-                        get().to(get_session_in_progress::<R>),
-                    )
-                    .route(
-                        "/all/{routine_id}",
-                        get().to(get_all_sessions_by_routine_id::<R>),
-                    )
-                    .route(
-                        "/{session_id}/{exercise_id}",
-                        post().to(add_set_performance_to_session::<R>),
-                    )
-                    .route(
-                        "/{performance_id}",
-                        delete().to(remove_set_performance_from_session::<R>),
-                    )
-                    .route("/end/{session_id}", put().to(end_session::<R>)),
-            )
-            // get all routines
-            .route("/debug/link_table", get().to(get_link_table_data::<R>))
-            .route("/debug/clear_data", get().to(clear_data::<R>)),
+                    .route("/debug/link_table", get().to(get_link_table_data::<R>))
+                    .route("/debug/clear_data", get().to(clear_data::<R>)),
+            ),
     );
+}
+
+//Auth
+async fn basic_auth<R: RoutinesRepository>(credentials: BasicAuth, repo: Data<R>) -> HttpResponse {
+    println!("hello from basic auth");
+    let jwt_secret: Hmac<Sha256> = Hmac::new_from_slice(
+        std::env::var("JWT_SECRET")
+            .expect("JWT_SECRET must be set!")
+            .as_bytes(),
+    )
+    .unwrap();
+    let username = credentials.user_id();
+    let password = credentials.password();
+    println!("username: {}", username);
+    match password {
+        None => HttpResponse::Unauthorized().json("Must provide username and password"),
+        Some(pass) => match repo.get_user(&username).await {
+            Ok(user) => {
+                let hash_secret = std::env::var("HASH_SECRET").expect("HASH_SECRET must be set!");
+                let mut verifier = Verifier::default();
+                let is_valid = verifier
+                    .with_hash(user.password)
+                    .with_password(pass)
+                    .with_secret_key(hash_secret)
+                    .verify()
+                    .unwrap();
+
+                if is_valid {
+                    let claims = TokenClaims {
+                        token_id: user.user_id,
+                    };
+                    let token_str = claims.sign_with_key(&jwt_secret).unwrap();
+                    HttpResponse::Ok().json(token_str)
+                } else {
+                    HttpResponse::Unauthorized().json("Incorrect username or password")
+                }
+            }
+            Err(error) => HttpResponse::InternalServerError().json(format!("{:?}", error)),
+        },
+    }
 }
 
 // USERS
@@ -106,15 +193,25 @@ async fn create_user<R: RoutinesRepository>(
     create_user: Json<CreateUser>,
     repo: Data<R>,
 ) -> HttpResponse {
-    HttpResponse::Ok().json(create_user)
+    let user: CreateUser = create_user.into_inner();
 
-    // println!("create_user: {:?}", create_user);
-    // match repo.create_user(&create_user).await {
-    //     Ok(user) => HttpResponse::Ok().json(user),
-    //     Err(e) => {
-    //         HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e))
-    //     }
-    // }
+    let hash_secret = std::env::var("HASH_SECRET").expect("HASH_SECRET must be set!");
+    let mut hasher = Hasher::default();
+    let hash = hasher
+        .with_password(user.password)
+        .with_secret_key(hash_secret)
+        .hash()
+        .unwrap();
+
+    let create_user = CreateUser {
+        username: user.username.clone(),
+        password: hash,
+    };
+
+    match repo.create_user(&create_user).await {
+        Ok(user) => HttpResponse::Ok().json(user),
+        Err(error) => HttpResponse::InternalServerError().json(format!("{:?}", error)),
+    }
 }
 
 async fn get_users<R: RoutinesRepository>(repo: Data<R>) -> HttpResponse {

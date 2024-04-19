@@ -29,14 +29,27 @@ impl RoutinesRepository for PostgresRoutinesRepository {
     async fn create_user(&self, create_user: &CreateUser) -> RoutineResult<User> {
         sqlx::query_as::<_, User>(
             r#"
-            INSERT INTO users (username, email, password)
-            VALUES ($1, $2, $3)
-            RETURNING username, email, password
+            INSERT INTO users (username,  password)
+            VALUES ($1, $2)
+            RETURNING *
             "#,
         )
         .bind(&create_user.username)
-        .bind(&create_user.email)
         .bind(&create_user.password)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_user(&self, username: &str) -> RoutineResult<User> {
+        sqlx::query_as::<_, User>(
+            r#"
+            SELECT *
+            FROM users
+            WHERE username = $1
+            "#,
+        )
+        .bind(username)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| e.to_string())
@@ -45,7 +58,7 @@ impl RoutinesRepository for PostgresRoutinesRepository {
     async fn get_users(&self) -> RoutineResult<Vec<User>> {
         sqlx::query_as::<_, User>(
             r#"
-            SELECT username, email, password
+            SELECT *
             FROM users
             "#,
         )
